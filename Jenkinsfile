@@ -180,7 +180,7 @@ pipeline {
                     withCredentials([usernamePassword(credentialsId: 'github-pat', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_TOKEN')]) {
                         sh """
                             # Set the remote URL with credentials embedded
-                           git remote set-url origin https://${GIT_USERNAME}:${GIT_TOKEN}@[github.com/sushenjayasuriya/Thingsboard-4.1.git](https://github.com/sushenjayasuriya/Thingsboard-4.1.git)
+                          git remote set-url origin https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/sushenjayasuriya/Thingsboard-4.1.git
                             
                             # Push branches
                             echo "Pushing upgrade branch: ${env.UPGRADE_BRANCH}"
