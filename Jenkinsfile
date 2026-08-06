@@ -399,58 +399,60 @@ networks:
         }
 
         stage('Verify Deployment') {
-            when {
-                expression { env.UPGRADE_REQUIRED == "true" }
-            }
-            steps {
-                script {
-                    echo "Verifying ThingsBoard deployment..."
-                    echo "Waiting for ThingsBoard to start up..."
-                    
-                    // Wait for startup (ThingsBoard needs time for database migration)
-                    sleep 90
-                    
-                    echo "Checking container health..."
-                    sh "docker ps | grep thingsboard-${params.TB_VERSION}"
-                    
-                    echo "Checking ThingsBoard logs for startup completion..."
-                    sh """
-                        # Show recent logs to verify startup
-                        docker logs --tail 100 thingsboard-${params.TB_VERSION} | grep -E "(Started ThingsBoard|Startup complete|migration.*completed)" || true
-                    """
-                    
-                    echo "Testing HTTP endpoint..."
-                    // Test the web interface
-                    def maxRetries = 6
-                    def retryCount = 0
-                    def httpStatus = ""
-                    
-                    while (retryCount < maxRetries) {
-                        try {
-                            httpStatus = sh(script: "curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/login", returnStdout: true).trim()
-                            if (httpStatus == "200") {
-                                echo "ThingsBoard is responding correctly (HTTP 200)"
-                                break
-                            }
-                        } catch (Exception e) {
-                            echo "Attempt ${retryCount + 1}/${maxRetries}: HTTP status ${httpStatus}, retrying in 30 seconds..."
-                        }
-                        
-                        retryCount++
-                        if (retryCount < maxRetries) {
-                            sleep 30
-                        }
+    when {
+        expression { env.UPGRADE_REQUIRED == "true" }
+    }
+    steps {
+        script {
+            echo "Verifying ThingsBoard deployment..."
+            echo "Waiting for ThingsBoard to start up..."
+            
+            // Increased initial wait time for heavy database migrations
+            sleep 180
+            
+            echo "Checking container health..."
+            sh "docker ps | grep thingsboard-${params.TB_VERSION}"
+            
+            echo "Checking ThingsBoard logs for startup completion..."
+            sh """
+                # Show recent logs to verify startup
+                docker logs --tail 100 thingsboard-${params.TB_VERSION} | grep -E "(Started ThingsBoard|Startup complete|migration.*completed)" || true
+            """
+            
+            echo "Testing HTTP endpoint..."
+            // Test the web interface with increased retries (15 attempts * 30s = 7.5 minutes of max grace period)
+            def maxRetries = 15
+            def retryCount = 0
+            def httpStatus = ""
+            
+            while (retryCount < maxRetries) {
+                try {
+                    httpStatus = sh(script: "curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/login", returnStdout: true).trim()
+                    if (httpStatus == "200") {
+                        echo "ThingsBoard is responding correctly (HTTP 200)"
+                        break
+                    } else {
+                        echo "Attempt ${retryCount + 1}/${maxRetries}: HTTP status received was ${httpStatus}, retrying..."
                     }
-                    
-                    if (httpStatus != "200") {
-                        echo "ThingsBoard is not responding correctly after ${maxRetries} attempts (HTTP ${httpStatus})"
-                        error "Deployment verification failed - HTTP status: ${httpStatus}"
-                    }
-                    
-                    echo "Deployment verified successfully!"
+                } catch (Exception e) {
+                    echo "Attempt ${retryCount + 1}/${maxRetries}: Connection failed, retrying in 30 seconds..."
+                }
+                
+                retryCount++
+                if (retryCount < maxRetries) {
+                    sleep 30
                 }
             }
+            
+            if (httpStatus != "200") {
+                echo "ThingsBoard is not responding correctly after ${maxRetries} attempts (Last HTTP status: ${httpStatus})"
+                error "Deployment verification failed - HTTP status: ${httpStatus}"
+            }
+            
+            echo "Deployment verified successfully!"
         }
+    }
+}
 
         stage('Git Cleanup') {
             when {
