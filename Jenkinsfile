@@ -283,19 +283,10 @@ services:
       - CASSANDRA_URL=10.160.0.2:9042
       - CASSANDRA_USE_CREDENTIALS=false
       - SECURITY_OAUTH2_ENABLED=false
-      - TB_QUEUE_TYPE=kafka
-      - TB_QUEUE_PREFIX=qa_
-      - TB_KAFKA_SERVERS=kafka:9092
-      - TB_QUEUE_KAFKA_REPLICATION_FACTOR=1
+      - TB_QUEUE_TYPE=in-memory
       - METRICS_ENABLE=true
       - METRICS_ENDPOINTS_EXPOSE=prometheus
-    networks:
-      - tb-kafka-net
     restart: no
-
-networks:
-  tb-kafka-net:
-    external: true
 """
                     
                     writeFile file: env.DOCKER_COMPOSE_TB, text: composeContent
