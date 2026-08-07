@@ -236,7 +236,7 @@ pipeline {
             }
         }
 
-       stage('Update Dockerfile') {
+      stage('Update Dockerfile') {
             when {
                 expression { env.UPGRADE_REQUIRED == "true" }
             }
@@ -258,8 +258,8 @@ RUN rpm -ivh /tmp/thingsboard.rpm && rm -f /tmp/thingsboard.rpm
 # Expose ThingsBoard UI/API port
 EXPOSE 8080
 
-# Start ThingsBoard with database migration using JAVA_OPTS
-CMD ["/bin/bash", "-c", "java ${JAVA_OPTS} -jar /usr/share/thingsboard/bin/thingsboard.jar --migrate && java ${JAVA_OPTS} -jar /usr/share/thingsboard/bin/thingsboard.jar"]'''
+# Execute the official upgrade script to migrate Cassandra/PostgreSQL schemas, then start the server
+CMD ["/bin/bash", "-c", "/usr/share/thingsboard/bin/install/upgrade.sh --fromVersion=4.1.0 && java ${JAVA_OPTS} -jar /usr/share/thingsboard/bin/thingsboard.jar"]'''
                     
                     writeFile file: 'Dockerfile', text: dockerfileContent
                     echo "Updated Dockerfile created for source code deployment"
