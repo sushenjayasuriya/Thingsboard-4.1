@@ -182,7 +182,7 @@ pipeline {
                     sh """
                         # Clean and build the merged source code
                         echo "Starting Maven build..."
-                        mvn clean package -DskipTests
+                        mvn clean package -Dmaven.test.skip=true
                         
                         # Verify build outputs
                         echo "Build completed. Checking outputs:"
@@ -236,7 +236,7 @@ pipeline {
             }
         }
 
-        stage('Update Dockerfile') {
+       stage('Update Dockerfile') {
             when {
                 expression { env.UPGRADE_REQUIRED == "true" }
             }
@@ -255,14 +255,11 @@ COPY application/target/thingsboard.rpm /tmp/
 # Install ThingsBoard from your custom RPM  
 RUN rpm -ivh /tmp/thingsboard.rpm && rm -f /tmp/thingsboard.rpm
 
-# Set working directory
-#WORKDIR /usr/share/thingsboard
-
 # Expose ThingsBoard UI/API port
 EXPOSE 8080
 
-# Start ThingsBoard with database migration (no upgrade.sh needed)
-CMD ["/bin/bash", "-c", "java -jar /usr/share/thingsboard/bin/thingsboard.jar --migrate && java -jar /usr/share/thingsboard/bin/thingsboard.jar"]'''
+# Start ThingsBoard with database migration using JAVA_OPTS
+CMD ["/bin/bash", "-c", "java ${JAVA_OPTS} -jar /usr/share/thingsboard/bin/thingsboard.jar --migrate && java ${JAVA_OPTS} -jar /usr/share/thingsboard/bin/thingsboard.jar"]'''
                     
                     writeFile file: 'Dockerfile', text: dockerfileContent
                     echo "Updated Dockerfile created for source code deployment"
@@ -298,7 +295,7 @@ CMD ["/bin/bash", "-c", "java -jar /usr/share/thingsboard/bin/thingsboard.jar --
             }
         }
 
-        stage('Generate Docker Compose') {
+       stage('Generate Docker Compose') {
             when {
                 expression { env.UPGRADE_REQUIRED == "true" }
             }
@@ -314,6 +311,7 @@ services:
     ports:
       - "8080:8080"
     environment:
+      - JAVA_OPTS=-Xms1024M -Xmx1024M
       - DATABASE_TS_TYPE=cassandra
       - SPRING_DATASOURCE_URL=jdbc:postgresql://10.160.0.2:5432/thingsboard_restore
       - SPRING_DATASOURCE_USERNAME=nethmi
@@ -399,60 +397,66 @@ networks:
         }
 
         stage('Verify Deployment') {
-    when {
-        expression { env.UPGRADE_REQUIRED == "true" }
-    }
-    steps {
-        script {
-            echo "Verifying ThingsBoard deployment..."
-            echo "Waiting for ThingsBoard to start up..."
-            
-            // Increased initial wait time for heavy database migrations
-            sleep 180
-            
-            echo "Checking container health..."
-            sh "docker ps | grep thingsboard-${params.TB_VERSION}"
-            
-            echo "Checking ThingsBoard logs for startup completion..."
-            sh """
-                # Show recent logs to verify startup
-                docker logs --tail 100 thingsboard-${params.TB_VERSION} | grep -E "(Started ThingsBoard|Startup complete|migration.*completed)" || true
-            """
-            
-            echo "Testing HTTP endpoint..."
-            // Test the web interface with increased retries (15 attempts * 30s = 7.5 minutes of max grace period)
-            def maxRetries = 15
-            def retryCount = 0
-            def httpStatus = ""
-            
-            while (retryCount < maxRetries) {
-                try {
-                    httpStatus = sh(script: "curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/login", returnStdout: true).trim()
-                    if (httpStatus == "200") {
-                        echo "ThingsBoard is responding correctly (HTTP 200)"
-                        break
-                    } else {
-                        echo "Attempt ${retryCount + 1}/${maxRetries}: HTTP status received was ${httpStatus}, retrying..."
+            when {
+                expression { env.UPGRADE_REQUIRED == "true" }
+            }
+            steps {
+                script {
+                    echo "Verifying ThingsBoard deployment..."
+                    echo "Waiting for ThingsBoard to start up..."
+                    
+                    // Increased initial wait time for heavy database migrations
+                    sleep 180
+                    
+                    echo "Checking container health..."
+                    // Use returnStatus: true to prevent Jenkins from aborting if grep fails (container crashed)
+                    def isRunning = sh(script: "docker ps | grep thingsboard-${params.TB_VERSION}", returnStatus: true) == 0
+                    
+                    if (!isRunning) {
+                        echo "CRITICAL: ThingsBoard container is NOT running! Fetching crash logs..."
+                        sh "docker logs thingsboard-${params.TB_VERSION} || true"
+                        error "Deployment verification failed - Container crashed during the initialization window."
                     }
-                } catch (Exception e) {
-                    echo "Attempt ${retryCount + 1}/${maxRetries}: Connection failed, retrying in 30 seconds..."
-                }
-                
-                retryCount++
-                if (retryCount < maxRetries) {
-                    sleep 30
+                    
+                    echo "Checking ThingsBoard logs for startup completion..."
+                    sh """
+                        # Show recent logs to verify startup
+                        docker logs --tail 100 thingsboard-${params.TB_VERSION} | grep -E "(Started ThingsBoard|Startup complete|migration.*completed)" || true
+                    """
+                    
+                    echo "Testing HTTP endpoint..."
+                    def maxRetries = 15
+                    def retryCount = 0
+                    def httpStatus = ""
+                    
+                    while (retryCount < maxRetries) {
+                        try {
+                            httpStatus = sh(script: "curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/login", returnStdout: true).trim()
+                            if (httpStatus == "200") {
+                                echo "ThingsBoard is responding correctly (HTTP 200)"
+                                break
+                            } else {
+                                echo "Attempt ${retryCount + 1}/${maxRetries}: HTTP status received was ${httpStatus}, retrying..."
+                            }
+                        } catch (Exception e) {
+                            echo "Attempt ${retryCount + 1}/${maxRetries}: Connection failed, retrying in 30 seconds..."
+                        }
+                        
+                        retryCount++
+                        if (retryCount < maxRetries) {
+                            sleep 30
+                        }
+                    }
+                    
+                    if (httpStatus != "200") {
+                        echo "ThingsBoard is not responding correctly after ${maxRetries} attempts (Last HTTP status: ${httpStatus})"
+                        error "Deployment verification failed - HTTP status: ${httpStatus}"
+                    }
+                    
+                    echo "Deployment verified successfully!"
                 }
             }
-            
-            if (httpStatus != "200") {
-                echo "ThingsBoard is not responding correctly after ${maxRetries} attempts (Last HTTP status: ${httpStatus})"
-                error "Deployment verification failed - HTTP status: ${httpStatus}"
-            }
-            
-            echo "Deployment verified successfully!"
         }
-    }
-}
 
         stage('Git Cleanup') {
             when {
@@ -497,11 +501,17 @@ Backup branch: ${env.BACKUP_BRANCH}
             }
         }
         
-        failure {
+       failure {
             script {
                 echo "ThingsBoard upgrade failed! Starting rollback procedures..."
                 
+                // SAVE LOGS BEFORE ROLLBACK
+                echo "Saving container logs to workspace..."
+                sh "docker logs thingsboard-${params.TB_VERSION} > thingsboard-crash.log 2>&1 || true"
+                archiveArtifacts artifacts: 'thingsboard-crash.log', allowEmptyArchive: true
+
                 if (env.UPGRADE_REQUIRED == "true") {
+                // ... (Keep the rest of your existing rollback script here) ...
                     try {
                         echo "Rolling back to previous version..."
                         sh """
