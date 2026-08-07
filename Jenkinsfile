@@ -167,7 +167,6 @@ pipeline {
             }
         }
 
-
         stage('Push Branches to GitHub') {
             when {
                 expression { env.UPGRADE_REQUIRED == "true" }
@@ -198,8 +197,6 @@ pipeline {
                 }
             }
         }
-
-        
 
         stage('Build Custom ThingsBoard') {
             when {
@@ -232,7 +229,6 @@ pipeline {
                 }
             }
         }
-
 
         stage('Backup Current Image') {
             when {
@@ -289,8 +285,8 @@ services:
       - SECURITY_OAUTH2_ENABLED=false
       - TB_QUEUE_TYPE=kafka
       - TB_QUEUE_PREFIX=qa_
-      - TB_KAFKA_SERVERS=kafka-1:9092,kafka-2:9092,kafka-3:9092
-      - TB_QUEUE_KAFKA_REPLICATION_FACTOR=3
+      - TB_KAFKA_SERVERS=kafka:9092
+      - TB_QUEUE_KAFKA_REPLICATION_FACTOR=1
       - METRICS_ENABLE=true
       - METRICS_ENDPOINTS_EXPOSE=prometheus
     networks:
@@ -364,7 +360,15 @@ networks:
                     sleep 60
                     
                     echo "🔍 Checking QA container health..."
-                    sh "docker ps | grep thingsboard-qa-${params.TB_VERSION}"
+                    
+                    // Added safety net: check if container is running before attempting to fetch logs
+                    def isRunning = sh(script: "docker ps --format '{{.Names}}' | grep '^thingsboard-qa-${params.TB_VERSION}\$'", returnStatus: true) == 0
+                    
+                    if (!isRunning) {
+                        echo "⚠️ ThingsBoard container crashed during startup! Fetching logs..."
+                        sh "docker logs thingsboard-qa-${params.TB_VERSION} --tail 100"
+                        error "❌ QA Deployment failed: Container stopped running."
+                    }
                     
                     echo "🔍 Checking ThingsBoard QA logs for startup completion..."
                     sh """
@@ -464,6 +468,7 @@ services:
       - TB_QUEUE_TYPE=kafka
       - TB_QUEUE_PREFIX=qa_
       - TB_KAFKA_SERVERS=kafka:9092
+      - TB_QUEUE_KAFKA_REPLICATION_FACTOR=1
       - METRICS_ENABLE=true
       - METRICS_ENDPOINTS_EXPOSE=prometheus
     networks:
