@@ -295,7 +295,7 @@ CMD ["/bin/bash", "-c", "/usr/share/thingsboard/bin/install/upgrade.sh --fromVer
             }
         }
 
-       stage('Generate Docker Compose') {
+               stage('Generate Docker Compose') {
             when {
                 expression { env.UPGRADE_REQUIRED == "true" }
             }
@@ -311,16 +311,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - JAVA_OPTS=-Xms1024M -Xmx1024M
-      - DATABASE_TS_TYPE=cassandra
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://10.160.0.2:5432/thingsboard_restore
-      - SPRING_DATASOURCE_USERNAME=nethmi
-      - SPRING_DATASOURCE_PASSWORD=123456
-      - CASSANDRA_CLUSTER_NAME=ThingsBoard Cluster
-      - CASSANDRA_KEYSPACE_NAME=thingsboard
-      - CASSANDRA_URL=10.160.0.2:9042
-      - CASSANDRA_USE_CREDENTIALS=false
-      - SECURITY_OAUTH2_ENABLED=false
+      - JAVA_OPTS=-Xms1024M -Xmx1024M -Dspring.datasource.url=jdbc:postgresql://10.160.0.2:5432/thingsboard_restore -Dspring.datasource.username=nethmi -Dspring.datasource.password=123456 -Dcassandra.cluster.name=ThingsBoard Cluster -Dcassandra.keyspace.name=thingsboard -Dcassandra.url=10.160.0.2:9042 -Dcassandra.use.credentials=false
       - TB_QUEUE_TYPE=kafka
       - TB_QUEUE_PREFIX=dev_
       - TB_KAFKA_SERVERS=kafka-1:9092,kafka-2:9092,kafka-3:9092
@@ -328,6 +319,7 @@ services:
       - METRICS_ENABLE=true
       - METRICS_ENDPOINTS_EXPOSE=prometheus
       - INSTALL_DATA_DIR=/data
+      - SECURITY_OAUTH2_ENABLED=false
     volumes:
       - tb-data:/data
       - tb-logs:/var/log/thingsboard
@@ -341,7 +333,6 @@ services:
 volumes:
   tb-data:
   tb-logs:
-  
 networks:
   tb-kafka-net:
     external: true
