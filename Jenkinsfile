@@ -212,8 +212,8 @@ networks:
             steps {
                 echo "🚀 Deploying complete Production stack with ThingsBoard ${params.TB_VERSION}"
                 sh """
-                    # Vaporize anything holding port 8080 on the host right this second
-                    sudo fuser -k 8080/tcp || true
+                    # Stop any container currently binding port 8080 using Docker's socket directly
+                    docker ps -q --filter "publish=8080" | xargs -r docker rm -f || true
                     
                     # Deploy new Production version immediately
                     docker compose -f ${env.DOCKER_COMPOSE_TB} up -d
