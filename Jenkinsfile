@@ -195,16 +195,19 @@ networks:
 
         stage('Stop Current ThingsBoard') {
             steps {
-                echo "🛑 Stopping old ThingsBoard Production containers..."
+                echo "🛑 Stopping old ThingsBoard Production containers and networks..."
                 sh """
-                    # Stop and remove any lingering production containers safely
+                    # Bring down any existing compose deployment cleanly
+                    docker compose -f ${env.DOCKER_COMPOSE_TB} down --remove-orphans || true
+                    
+                    # Force stop and remove any lingering production containers by name
                     docker ps -a --format '{{.Names}}' | grep '^thingsboard-prod-' | xargs -r docker stop || true
                     docker ps -a --format '{{.Names}}' | grep '^thingsboard-prod-' | xargs -r docker rm || true
                     
                     # Give the OS kernel a moment to release port 8080 bindings
                     sleep 3
                     
-                    echo "✅ Old Production containers cleared without affecting Dev or QA"
+                    echo "✅ Old Production containers and networks cleared safely"
                 """
             }
         }
