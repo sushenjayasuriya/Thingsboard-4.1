@@ -228,27 +228,6 @@ networks:
             }
         }
 
-        stage('Deploy New Version') {
-            when {
-                expression { env.UPGRADE_REQUIRED == "true" }
-            }
-            steps {
-                echo "🚀 Deploying complete Production stack with ThingsBoard ${params.TB_VERSION}"
-                sh """
-                    # Deploy new Production version with both compose files
-                    docker compose -f ${env.DOCKER_COMPOSE_TB} up -d
-                    
-                    echo "✅ Complete Production stack deployed with ThingsBoard ${params.TB_VERSION}"
-                    echo "🔍 Checking Production container status..."
-                    docker ps | grep -E "(thingsboard-prod)"
-
-                    echo "🔍 Waiting for Production services to be ready..."
-                    sleep 15
-
-                """
-            }
-        }
-
         stage('Verify Deployment') {
             when {
                 expression { env.UPGRADE_REQUIRED == "true" }
