@@ -3,7 +3,6 @@ services:
   # Kafka Broker 1
   kafka-1:
     image: confluentinc/cp-kafka:7.5.0
-    container_name: kafka-1
     ports:
       - "19092:9092"
       - "19093:9093"
@@ -39,7 +38,6 @@ services:
   # Kafka Broker 2
   kafka-2:
     image: confluentinc/cp-kafka:7.5.0
-    container_name: kafka-2
     ports:
       - "19094:9092"  # Different external port to avoid conflicts
       - "19095:9093"
@@ -75,7 +73,6 @@ services:
   # Kafka Broker 3
   kafka-3:
     image: confluentinc/cp-kafka:7.5.0
-    container_name: kafka-3
     ports:
       - "19096:9092"  # Different external port to avoid conflicts
       - "19097:9093"
@@ -111,7 +108,6 @@ services:
      # Add this to your existing docker-compose.kafka.yml file
   kafbat-ui:
     image: ghcr.io/kafbat/kafka-ui:latest
-    container_name: kafbat-ui
     ports:
       - "18087:8080"  # Using 8085 since 8080 and 8081 are unavailable
     environment:
