@@ -478,8 +478,8 @@ ThingsBoard Source Code Upgrade Completed Successfully!
 ========================================================
 Upgraded from: ${env.CURRENT_VERSION ?: 'none'} -> ${params.TB_VERSION}
 Method: Source code merge with custom changes preserved
-Container: thingsboard-${params.TB_VERSION}  
-Web UI: http://localhost:8080
+Container: dev-thingsboard-${params.TB_VERSION}  
+Web UI: http://localhost:8081
 Backup available: ${env.ROLLBACK_IMAGE ?: 'none'}
 Upgrade branch: ${env.UPGRADE_BRANCH}
 Backup branch: ${env.BACKUP_BRANCH}
