@@ -157,7 +157,8 @@ services:
     container_name: thingsboard-prod-${params.TB_VERSION}
     ports:
       - "8080:8080"
-    environment:
+   environment:
+      - JAVA_OPTS=-Xms2048M -Xmx2048M
       - DATABASE_TS_TYPE=cassandra
       - SPRING_DATASOURCE_URL=jdbc:postgresql://10.160.0.3:5432/thingsboard_prod
       - SPRING_DATASOURCE_USERNAME=nethmi
