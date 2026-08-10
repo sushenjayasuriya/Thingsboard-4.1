@@ -201,6 +201,9 @@ networks:
                     docker ps -a --format '{{.Names}}' | grep '^thingsboard-prod-' | xargs -r docker stop || true
                     docker ps -a --format '{{.Names}}' | grep '^thingsboard-prod-' | xargs -r docker rm || true
                     
+                    # Give the OS kernel a moment to release port 8080 bindings
+                    sleep 3
+                    
                     echo "✅ Old Production containers cleared without affecting Dev or QA"
                 """
             }
