@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -140,7 +140,7 @@ public class SimpleCalculatedFieldStateTest {
         Output output = getCalculatedFieldConfig().getOutput();
         assertThat(result.getType()).isEqualTo(output.getType());
         assertThat(result.getScope()).isEqualTo(output.getScope());
-        assertThat(result.getResult()).isEqualTo(JacksonUtil.valueToTree(Map.of("output", 49)));
+        assertThat(result.getResult()).isEqualTo(JacksonUtil.valueToTree(Map.of("output", 49L)));
     }
 
     @Test
@@ -170,7 +170,7 @@ public class SimpleCalculatedFieldStateTest {
         Output output = getCalculatedFieldConfig().getOutput();
         assertThat(result.getType()).isEqualTo(output.getType());
         assertThat(result.getScope()).isEqualTo(output.getScope());
-        assertThat(result.getResult()).isEqualTo(JacksonUtil.valueToTree(Map.of("output", 35)));
+        assertThat(result.getResult()).isEqualTo(JacksonUtil.valueToTree(Map.of("output", 35L)));
     }
 
     @Test

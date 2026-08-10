@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,9 @@ import org.thingsboard.rule.engine.api.DeviceStateManager;
 import org.thingsboard.rule.engine.api.JobManager;
 import org.thingsboard.rule.engine.api.MailService;
 import org.thingsboard.rule.engine.api.MqttClientSettings;
+import org.thingsboard.rule.engine.api.TbHttpClientSettings;
 import org.thingsboard.rule.engine.api.NotificationCenter;
+import org.thingsboard.rule.engine.api.RuleEngineAiChatModelService;
 import org.thingsboard.rule.engine.api.RuleEngineAlarmService;
 import org.thingsboard.rule.engine.api.RuleEngineApiUsageStateService;
 import org.thingsboard.rule.engine.api.RuleEngineAssetProfileCache;
@@ -50,6 +52,7 @@ import org.thingsboard.server.common.data.Device;
 import org.thingsboard.server.common.data.DeviceProfile;
 import org.thingsboard.server.common.data.EntityType;
 import org.thingsboard.server.common.data.HasRuleEngineProfile;
+import org.thingsboard.server.common.data.HasTenantId;
 import org.thingsboard.server.common.data.StringUtils;
 import org.thingsboard.server.common.data.TenantProfile;
 import org.thingsboard.server.common.data.alarm.Alarm;
@@ -59,6 +62,7 @@ import org.thingsboard.server.common.data.id.AssetId;
 import org.thingsboard.server.common.data.id.CustomerId;
 import org.thingsboard.server.common.data.id.DeviceId;
 import org.thingsboard.server.common.data.id.EntityId;
+import org.thingsboard.server.common.data.id.HasId;
 import org.thingsboard.server.common.data.id.RuleChainId;
 import org.thingsboard.server.common.data.id.RuleNodeId;
 import org.thingsboard.server.common.data.id.TenantId;
@@ -76,6 +80,7 @@ import org.thingsboard.server.common.msg.TbMsgMetaData;
 import org.thingsboard.server.common.msg.TbMsgProcessingStackItem;
 import org.thingsboard.server.common.msg.queue.ServiceType;
 import org.thingsboard.server.common.msg.queue.TopicPartitionInfo;
+import org.thingsboard.server.dao.ai.AiModelService;
 import org.thingsboard.server.dao.alarm.AlarmCommentService;
 import org.thingsboard.server.dao.asset.AssetProfileService;
 import org.thingsboard.server.dao.asset.AssetService;
@@ -108,6 +113,7 @@ import org.thingsboard.server.dao.ota.OtaPackageService;
 import org.thingsboard.server.dao.queue.QueueService;
 import org.thingsboard.server.dao.queue.QueueStatsService;
 import org.thingsboard.server.dao.relation.RelationService;
+import org.thingsboard.server.dao.resource.TbResourceDataCache;
 import org.thingsboard.server.dao.resource.ResourceService;
 import org.thingsboard.server.dao.rule.RuleChainService;
 import org.thingsboard.server.dao.tenant.TenantService;
@@ -178,11 +184,24 @@ public class DefaultTbContext implements TbContext {
         if (!msg.isValid()) {
             return;
         }
+        RuleChainId selfRuleChainId = nodeCtx.getSelf().getRuleChainId();
+        RuleNodeId selfId = nodeCtx.getSelf().getId();
+        if (msg.isAlreadyInStack(selfRuleChainId, selfId)) {
+            log.warn("[{}] Detected rule chain processing loop for rule node [{}] in rule chain [{}]. " +
+                    "The message will be failed to prevent infinite loop. " +
+                    "Please check the rule chain configuration for circular references.",
+                    nodeCtx.getTenantId(), selfId, selfRuleChainId);
+            tellFailure(msg, new RuntimeException(
+                    "Detected rule chain processing loop for rule node [" + selfId + "] " +
+                    "in rule chain [" + selfRuleChainId + "]. " +
+                    "Please check the rule chain configuration for circular references."));
+            return;
+        }
         TbMsg tbMsg = msg.copy()
                 .ruleChainId(ruleChainId)
                 .resetRuleNodeId()
                 .build();
-        tbMsg.pushToStack(nodeCtx.getSelf().getRuleChainId(), nodeCtx.getSelf().getId());
+        tbMsg.pushToStack(selfRuleChainId, selfId);
         TopicPartitionInfo tpi = resolvePartition(msg);
         doEnqueue(tpi, tbMsg, new SimpleTbQueueCallback(md -> ack(msg), t -> tellFailure(msg, t)));
     }
@@ -769,6 +788,11 @@ public class DefaultTbContext implements TbContext {
     }
 
     @Override
+    public TbResourceDataCache getTbResourceDataCache() {
+        return mainCtx.getResourceDataCache();
+    }
+
+    @Override
     public OtaPackageService getOtaPackageService() {
         return mainCtx.getOtaPackageService();
     }
@@ -1025,8 +1049,23 @@ public class DefaultTbContext implements TbContext {
     }
 
     @Override
+    public RuleEngineAiChatModelService getAiChatModelService() {
+        return mainCtx.getAiChatModelService();
+    }
+
+    @Override
+    public AiModelService getAiModelService() {
+        return mainCtx.getAiModelService();
+    }
+
+    @Override
     public MqttClientSettings getMqttClientSettings() {
         return mainCtx.getMqttClientSettings();
+    }
+
+    @Override
+    public TbHttpClientSettings getTbHttpClientSettings() {
+        return mainCtx.getTbHttpClientSettings();
     }
 
     private TbMsgMetaData getActionMetaData(RuleNodeId ruleNodeId) {
@@ -1042,8 +1081,17 @@ public class DefaultTbContext implements TbContext {
 
     @Override
     public void checkTenantEntity(EntityId entityId) throws TbNodeException {
-        if (!this.getTenantId().equals(TenantIdLoader.findTenantId(this, entityId))) {
+        TenantId actualTenantId = TenantIdLoader.findTenantId(this, entityId);
+        if (!getTenantId().equals(actualTenantId)) {
             throw new TbNodeException("Entity with id: '" + entityId + "' specified in the configuration doesn't belong to the current tenant.", true);
+        }
+    }
+
+    @Override
+    public <E extends HasId<I> & HasTenantId, I extends EntityId> void checkTenantOrSystemEntity(E entity) throws TbNodeException {
+        TenantId actualTenantId = entity.getTenantId();
+        if (!getTenantId().equals(actualTenantId) && !actualTenantId.isSysTenantId()) {
+            throw new TbNodeException("Entity with id: '" + entity.getId() + "' specified in the configuration doesn't belong to the current or system tenant.", true);
         }
     }
 

@@ -1,5 +1,5 @@
 ///
-/// Copyright © 2016-2025 The Thingsboard Authors
+/// Copyright © 2016-2026 The Thingsboard Authors
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -36,6 +36,7 @@ import { PageLink } from '@shared/models/page/page-link';
 import { OtaUpdateComponent } from '@home/pages/ota-update/ota-update.component';
 import { EntityAction } from '@home/models/entity/entity-component.models';
 import { FileSizePipe } from '@shared/pipe/file-size.pipe';
+import { OtaUpdateTabsComponent } from '@home/pages/ota-update/ota-update-tabs.component';
 
 @Injectable()
 export class OtaUpdateTableConfigResolve  {
@@ -50,6 +51,7 @@ export class OtaUpdateTableConfigResolve  {
               private fileSize: FileSizePipe) {
     this.config.entityType = EntityType.OTA_PACKAGE;
     this.config.entityComponent = OtaUpdateComponent;
+    this.config.entityTabsComponent = OtaUpdateTabsComponent;
     this.config.entityTranslations = entityTypeTranslations.get(EntityType.OTA_PACKAGE);
     this.config.entityResources = entityTypeResources.get(EntityType.OTA_PACKAGE);
 

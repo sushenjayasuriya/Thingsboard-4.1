@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,9 +31,6 @@ import org.thingsboard.server.dao.entity.EntityDaoService;
 
 import java.util.List;
 
-/**
- * Created by Victor Basanets on 8/27/2017.
- */
 public interface EntityViewService extends EntityDaoService {
 
     EntityView saveEntityView(EntityView entityView);
@@ -51,6 +48,8 @@ public interface EntityViewService extends EntityDaoService {
     EntityView findEntityViewById(TenantId tenantId, EntityViewId entityViewId);
 
     EntityView findEntityViewById(TenantId tenantId, EntityViewId entityViewId, boolean putInCache);
+
+    ListenableFuture<EntityView> findEntityViewByIdAsync(TenantId tenantId, EntityViewId entityViewId);
 
     EntityView findEntityViewByTenantIdAndName(TenantId tenantId, String name);
 
@@ -74,8 +73,6 @@ public interface EntityViewService extends EntityDaoService {
 
     ListenableFuture<List<EntityView>> findEntityViewsByQuery(TenantId tenantId, EntityViewSearchQuery query);
 
-    ListenableFuture<EntityView> findEntityViewByIdAsync(TenantId tenantId, EntityViewId entityViewId);
-
     ListenableFuture<List<EntityView>> findEntityViewsByTenantIdAndEntityIdAsync(TenantId tenantId, EntityId entityId);
 
     List<EntityView> findEntityViewsByTenantIdAndEntityId(TenantId tenantId, EntityId entityId);
@@ -95,4 +92,5 @@ public interface EntityViewService extends EntityDaoService {
     PageData<EntityView> findEntityViewsByTenantIdAndEdgeId(TenantId tenantId, EdgeId edgeId, PageLink pageLink);
 
     PageData<EntityView> findEntityViewsByTenantIdAndEdgeIdAndType(TenantId tenantId, EdgeId edgeId, String type, PageLink pageLink);
+
 }

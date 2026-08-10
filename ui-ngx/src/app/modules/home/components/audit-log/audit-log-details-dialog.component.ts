@@ -1,5 +1,5 @@
 ///
-/// Copyright © 2016-2025 The Thingsboard Authors
+/// Copyright © 2016-2026 The Thingsboard Authors
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -29,9 +29,10 @@ export interface AuditLogDetailsDialogData {
 }
 
 @Component({
-  selector: 'tb-audit-log-details-dialog',
-  templateUrl: './audit-log-details-dialog.component.html',
-  styleUrls: ['./audit-log-details-dialog.component.scss']
+    selector: 'tb-audit-log-details-dialog',
+    templateUrl: './audit-log-details-dialog.component.html',
+    styleUrls: ['./audit-log-details-dialog.component.scss'],
+    standalone: false
 })
 export class AuditLogDetailsDialogComponent extends DialogComponent<AuditLogDetailsDialogComponent> implements OnInit, OnDestroy {
 

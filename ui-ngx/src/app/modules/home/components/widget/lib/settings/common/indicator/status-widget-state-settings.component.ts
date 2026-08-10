@@ -1,5 +1,5 @@
 ///
-/// Copyright © 2016-2025 The Thingsboard Authors
+/// Copyright © 2016-2026 The Thingsboard Authors
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,16 +24,17 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
-  selector: 'tb-status-widget-state-settings',
-  templateUrl: './status-widget-state-settings.component.html',
-  styleUrls: ['./../../widget-settings.scss'],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => StatusWidgetStateSettingsComponent),
-      multi: true
-    }
-  ]
+    selector: 'tb-status-widget-state-settings',
+    templateUrl: './status-widget-state-settings.component.html',
+    styleUrls: ['./../../widget-settings.scss'],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => StatusWidgetStateSettingsComponent),
+            multi: true
+        }
+    ],
+    standalone: false
 })
 export class StatusWidgetStateSettingsComponent implements OnInit, OnChanges, ControlValueAccessor {
 

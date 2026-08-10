@@ -1,5 +1,5 @@
 ///
-/// Copyright © 2016-2025 The Thingsboard Authors
+/// Copyright © 2016-2026 The Thingsboard Authors
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -148,6 +148,8 @@ export interface WidgetAction extends IWidgetAction {
 export interface IDashboardWidget {
   updateWidgetParams(): void;
 }
+
+export type WidgetDestroyCallback = () => void;
 
 export class WidgetContext {
 
@@ -343,6 +345,8 @@ export class WidgetContext {
     ...RxJSOperators
   };
 
+  private destroyCallbacks: WidgetDestroyCallback[] = [];
+
   registerPopoverComponent(popoverComponent: TbPopoverComponent) {
     this.popoverComponents.push(popoverComponent);
     popoverComponent.tbDestroy.subscribe(() => {
@@ -380,6 +384,10 @@ export class WidgetContext {
     for (const labelPattern of this.labelPatterns.values()) {
       labelPattern.update();
     }
+  }
+
+  registerDestroyCallback(destroyCallback: WidgetDestroyCallback) {
+    this.destroyCallbacks.push(destroyCallback);
   }
 
   showSuccessToast(message: string, duration: number = 1000,
@@ -494,6 +502,13 @@ export class WidgetContext {
       labelPattern.destroy();
     }
     this.labelPatterns.clear();
+    this.destroyCallbacks.forEach((destroyCallback) => {
+        try {
+          destroyCallback()
+        } catch (_ignoredError) { /* empty */ }
+      }
+    );
+    this.destroyCallbacks.length = 0;
     this.width = undefined;
     this.height = undefined;
     this.destroyed = true;

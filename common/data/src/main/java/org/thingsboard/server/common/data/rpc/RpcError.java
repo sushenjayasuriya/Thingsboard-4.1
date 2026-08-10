@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,4 +20,16 @@ package org.thingsboard.server.common.data.rpc;
  */
 public enum RpcError {
     NOT_FOUND, FORBIDDEN, NO_ACTIVE_CONNECTION, TIMEOUT, INTERNAL;
+
+    private static final RpcError[] VALUES = values();
+
+    /**
+     * Resolves an {@link RpcError} from the proto {@code error} ordinal.
+     * Returns {@code null} both for the "no error" sentinel (negative value) and for unknown ordinals
+     * that a newer node in a mixed-version cluster might emit, so callers never hit an
+     * {@link ArrayIndexOutOfBoundsException}.
+     */
+    public static RpcError fromProtoErrorCode(int errorCode) {
+        return errorCode >= 0 && errorCode < VALUES.length ? VALUES[errorCode] : null;
+    }
 }

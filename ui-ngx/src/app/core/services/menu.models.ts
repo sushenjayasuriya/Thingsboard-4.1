@@ -1,5 +1,5 @@
 ///
-/// Copyright © 2016-2025 The Thingsboard Authors
+/// Copyright © 2016-2026 The Thingsboard Authors
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ export interface MenuSection {
   pages?: Array<MenuSection>;
   opened?: boolean;
   rootOnly?: boolean;
+  isNew?: boolean;
   customTranslate?: boolean;
 }
 
@@ -105,7 +106,9 @@ export enum MenuId {
   otaUpdates = 'otaUpdates',
   version_control = 'version_control',
   api_usage = 'api_usage',
-  trendz_settings = 'trendz_settings'
+  trendz_settings = 'trendz_settings',
+  ai_models = 'ai_models',
+  iot_hub = 'iot_hub'
 }
 
 declare type MenuFilter = (authState: AuthState) => boolean;
@@ -284,6 +287,16 @@ export const menuSectionMap = new Map<MenuId, MenuSection>([
       type: 'link',
       path: '/notification/rules',
       icon: 'mdi:message-cog'
+    }
+  ],
+  [
+    MenuId.ai_models,
+    {
+      id: MenuId.ai_models,
+      name: 'ai-models.ai-models',
+      type: 'link',
+      path: '/settings/ai-models',
+      icon: 'auto_awesome'
     }
   ],
   [
@@ -696,6 +709,17 @@ export const menuSectionMap = new Map<MenuId, MenuSection>([
       path: '/settings/trendz',
       icon: 'trendz-settings'
     }
+  ],
+  [
+    MenuId.iot_hub,
+    {
+      id: MenuId.iot_hub,
+      name: 'iot-hub.iot-hub',
+      type: 'link',
+      path: '/iot-hub',
+      icon: 'hub',
+      isNew: true
+    }
   ]
 ]);
 
@@ -783,6 +807,7 @@ const defaultUserMenuMap = new Map<Authority, MenuReference[]>([
       {id: MenuId.home},
       {id: MenuId.alarms},
       {id: MenuId.dashboards},
+      {id: MenuId.iot_hub},
       {
         id: MenuId.entities,
         pages: [
@@ -856,7 +881,8 @@ const defaultUserMenuMap = new Map<Authority, MenuReference[]>([
           {id: MenuId.notification_settings},
           {id: MenuId.repository_settings},
           {id: MenuId.auto_commit_settings},
-          {id: MenuId.trendz_settings}
+          {id: MenuId.trendz_settings},
+          {id: MenuId.ai_models}
         ]
       },
       {

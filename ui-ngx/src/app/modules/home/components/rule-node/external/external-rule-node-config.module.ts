@@ -1,5 +1,5 @@
 ///
-/// Copyright © 2016-2025 The Thingsboard Authors
+/// Copyright © 2016-2026 The Thingsboard Authors
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -32,6 +32,7 @@ import { HomeComponentsModule } from '@home/components/public-api';
 import { CommonRuleNodeConfigModule } from '../common/common-rule-node-config.module';
 import { SlackConfigComponent } from './slack-config.component';
 import { LambdaConfigComponent } from './lambda-config.component';
+import { AiConfigComponent } from '@home/components/rule-node/external/ai-config.component';
 
 @NgModule({
   declarations: [
@@ -47,7 +48,8 @@ import { LambdaConfigComponent } from './lambda-config.component';
     SendEmailConfigComponent,
     AzureIotHubConfigComponent,
     SendSmsConfigComponent,
-    SlackConfigComponent
+    SlackConfigComponent,
+    AiConfigComponent
   ],
   imports: [
     CommonModule,
@@ -68,7 +70,8 @@ import { LambdaConfigComponent } from './lambda-config.component';
     SendEmailConfigComponent,
     AzureIotHubConfigComponent,
     SendSmsConfigComponent,
-    SlackConfigComponent
+    SlackConfigComponent,
+    AiConfigComponent
   ]
 })
 export class ExternalRuleNodeConfigModule {

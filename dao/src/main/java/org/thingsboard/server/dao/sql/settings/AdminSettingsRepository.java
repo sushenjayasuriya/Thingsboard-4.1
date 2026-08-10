@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,9 +22,6 @@ import org.thingsboard.server.dao.model.sql.AdminSettingsEntity;
 
 import java.util.UUID;
 
-/**
- * Created by Valerii Sosliuk on 5/6/2017.
- */
 public interface AdminSettingsRepository extends JpaRepository<AdminSettingsEntity, UUID> {
 
     AdminSettingsEntity findByTenantIdAndKey(UUID tenantId, String key);

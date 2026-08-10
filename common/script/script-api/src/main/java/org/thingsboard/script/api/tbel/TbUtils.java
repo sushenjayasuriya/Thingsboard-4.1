@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import org.mvel2.ExecutionContext;
 import org.mvel2.ParserConfiguration;
 import org.mvel2.execution.ExecutionArrayList;
 import org.mvel2.execution.ExecutionHashMap;
+import org.mvel2.execution.ExecutionLinkedHashSet;
 import org.mvel2.util.MethodStub;
 import org.thingsboard.common.util.JacksonUtil;
 import org.thingsboard.common.util.geo.Coordinates;
@@ -46,6 +47,7 @@ import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -385,6 +387,12 @@ public class TbUtils {
         parserConfig.addImport("isList", new MethodStub(TbUtils.class.getMethod("isList",
                 Object.class)));
         parserConfig.addImport("isArray", new MethodStub(TbUtils.class.getMethod("isArray",
+                Object.class)));
+        parserConfig.addImport("newSet", new MethodStub(TbUtils.class.getMethod("newSet",
+                ExecutionContext.class)));
+        parserConfig.addImport("toSet", new MethodStub(TbUtils.class.getMethod("toSet",
+                ExecutionContext.class, List.class)));
+        parserConfig.addImport("isSet", new MethodStub(TbUtils.class.getMethod("isSet",
                 Object.class)));
     }
 
@@ -890,11 +898,11 @@ public class TbUtils {
 
     public static int parseBytesToInt(byte[] data, int offset, int length, boolean bigEndian) {
         validationNumberByLength(data, offset, length, BYTES_LEN_INT_MAX);
-        var bb = ByteBuffer.allocate(4);
+        var bb = ByteBuffer.allocate(BYTES_LEN_INT_MAX);
         if (!bigEndian) {
             bb.order(ByteOrder.LITTLE_ENDIAN);
         }
-        bb.position(bigEndian ? 4 - length : 0);
+        bb.position(bigEndian ? BYTES_LEN_INT_MAX - length : 0);
         bb.put(data, offset, length);
         bb.position(0);
         return bb.getInt();
@@ -915,11 +923,11 @@ public class TbUtils {
     public static long parseBytesToUnsignedInt(byte[] data, int offset, int length, boolean bigEndian) {
         validationNumberByLength(data, offset, length, BYTES_LEN_INT_MAX);
 
-        ByteBuffer bb = ByteBuffer.allocate(8);
+        ByteBuffer bb = ByteBuffer.allocate(BYTES_LEN_LONG_MAX);
         if (!bigEndian) {
             bb.order(ByteOrder.LITTLE_ENDIAN);
         }
-        bb.position(bigEndian ? 8 - length : 0);
+        bb.position(bigEndian ? BYTES_LEN_LONG_MAX - length : 0);
         bb.put(data, offset, length);
         bb.position(0);
 
@@ -1176,6 +1184,10 @@ public class TbUtils {
 
     public static int toInt(double value) {
         return BigDecimal.valueOf(value).setScale(0, RoundingMode.HALF_UP).intValue();
+    }
+
+    public static long toLong(double value) {
+        return BigDecimal.valueOf(value).setScale(0, RoundingMode.HALF_UP).longValue();
     }
 
     public static boolean isNaN(double value) {
@@ -1479,6 +1491,19 @@ public class TbUtils {
 
     public static boolean isArray(Object obj) {
         return obj != null && obj.getClass().isArray();
+    }
+
+    public static <E> Set<E> newSet(ExecutionContext ctx) {
+        return new ExecutionLinkedHashSet<>(ctx);
+    }
+
+    public static <E> Set<E> toSet(ExecutionContext ctx, List<E> list) {
+        Set<E> newSet = new LinkedHashSet<>(list);
+        return new ExecutionLinkedHashSet<>(newSet, ctx);
+    }
+
+    public static boolean isSet(Object obj) {
+        return obj instanceof Set;
     }
 
     private static byte isValidIntegerToByte(Integer val) {

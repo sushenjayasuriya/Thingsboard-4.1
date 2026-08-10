@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,9 +15,8 @@
  */
 package org.thingsboard.server.dao.alarm;
 
-
 import com.fasterxml.jackson.databind.JsonNode;
-import com.google.common.base.Function;
+import com.google.common.util.concurrent.FluentFuture;
 import com.google.common.util.concurrent.ListenableFuture;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -67,7 +66,6 @@ import org.thingsboard.server.dao.eventsourcing.DeleteEntityEvent;
 import org.thingsboard.server.dao.eventsourcing.SaveEntityEvent;
 import org.thingsboard.server.dao.exception.DataValidationException;
 import org.thingsboard.server.dao.service.ConstraintValidator;
-import org.thingsboard.server.dao.service.DataValidator;
 import org.thingsboard.server.dao.tenant.TenantService;
 
 import java.util.ArrayList;
@@ -82,6 +80,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static org.thingsboard.server.dao.service.Validator.validateEntityDataPageLink;
 import static org.thingsboard.server.dao.service.Validator.validateId;
 
@@ -97,10 +96,9 @@ public class BaseAlarmService extends AbstractCachedEntityService<TenantId, Page
     private final TenantService tenantService;
     private final AlarmDao alarmDao;
     private final EntityService entityService;
-    private final DataValidator<Alarm> alarmDataValidator;
 
-    @TransactionalEventListener(classes = AlarmTypesCacheEvictEvent.class)
     @Override
+    @TransactionalEventListener
     public void handleEvictEvent(AlarmTypesCacheEvictEvent event) {
         TenantId tenantId = event.getTenantId();
         cache.evict(tenantId);
@@ -167,6 +165,11 @@ public class BaseAlarmService extends AbstractCachedEntityService<TenantId, Page
     @Override
     public Alarm findLatestActiveByOriginatorAndType(TenantId tenantId, EntityId originator, String type) {
         return alarmDao.findLatestActiveByOriginatorAndType(tenantId, originator, type);
+    }
+
+    @Override
+    public FluentFuture<Alarm> findLatestActiveByOriginatorAndTypeAsync(TenantId tenantId, EntityId originator, String type) {
+        return alarmDao.findLatestActiveByOriginatorAndTypeAsync(tenantId, originator, type);
     }
 
     @Override
@@ -438,15 +441,15 @@ public class BaseAlarmService extends AbstractCachedEntityService<TenantId, Page
         }
     }
 
-    private <T> T getAndUpdate(TenantId tenantId, AlarmId alarmId, Function<Alarm, T> function) {
-        validateId(alarmId, "Alarm id should be specified!");
-        Alarm entity = alarmDao.findAlarmById(tenantId, alarmId.getId());
-        return function.apply(entity);
-    }
-
     @Override
     public Optional<HasId<?>> findEntity(TenantId tenantId, EntityId entityId) {
         return Optional.ofNullable(findAlarmById(tenantId, new AlarmId(entityId.getId())));
+    }
+
+    @Override
+    public FluentFuture<Optional<HasId<?>>> findEntityAsync(TenantId tenantId, EntityId entityId) {
+        return FluentFuture.from(findAlarmByIdAsync(tenantId, new AlarmId(entityId.getId())))
+                .transform(Optional::ofNullable, directExecutor());
     }
 
     @Override

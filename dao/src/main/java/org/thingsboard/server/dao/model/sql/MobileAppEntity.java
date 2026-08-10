@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,6 +53,9 @@ public class MobileAppEntity extends BaseSqlEntity<MobileApp> {
     @Column(name = ModelConstants.MOBILE_APP_PKG_NAME_PROPERTY)
     private String pkgName;
 
+    @Column(name = ModelConstants.MOBILE_APP_TITLE_PROPERTY)
+    private String title;
+
     @Column(name = ModelConstants.MOBILE_APP_APP_SECRET_PROPERTY)
     private String appSecret;
 
@@ -82,6 +85,7 @@ public class MobileAppEntity extends BaseSqlEntity<MobileApp> {
             this.tenantId = mobile.getTenantId().getId();
         }
         this.pkgName = mobile.getPkgName();
+        this.title = mobile.getTitle();
         this.appSecret = mobile.getAppSecret();
         this.platformType = mobile.getPlatformType();
         this.status = mobile.getStatus();
@@ -98,6 +102,7 @@ public class MobileAppEntity extends BaseSqlEntity<MobileApp> {
         }
         mobile.setCreatedTime(createdTime);
         mobile.setPkgName(pkgName);
+        mobile.setTitle(title);
         mobile.setAppSecret(appSecret);
         mobile.setPlatformType(platformType);
         mobile.setStatus(status);

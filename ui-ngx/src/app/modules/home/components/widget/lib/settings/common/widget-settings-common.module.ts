@@ -1,5 +1,5 @@
 ///
-/// Copyright © 2016-2025 The Thingsboard Authors
+/// Copyright © 2016-2026 The Thingsboard Authors
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -267,6 +267,9 @@ import {
 import {
   ShapeFillStripeSettingsPanelComponent
 } from '@home/components/widget/lib/settings/common/map/shape-fill-stripe-settings-panel.component';
+import {
+  HtmlContainerSettingsComponent
+} from '@home/components/widget/lib/settings/common/html/html-container-settings.component';
 
 @NgModule({
   declarations: [
@@ -372,7 +375,8 @@ import {
     DataKeysComponent,
     DataKeyConfigDialogComponent,
     DataKeyConfigComponent,
-    WidgetSettingsComponent
+    WidgetSettingsComponent,
+    HtmlContainerSettingsComponent
   ],
   imports: [
     CommonModule,
@@ -453,7 +457,8 @@ import {
     DataKeysComponent,
     DataKeyConfigDialogComponent,
     DataKeyConfigComponent,
-    WidgetSettingsComponent
+    WidgetSettingsComponent,
+    HtmlContainerSettingsComponent
   ],
   providers: [
     ColorSettingsComponentService,

@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -78,4 +78,6 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
             "u.customerId, u.version, u.firstName, u.lastName, u.email, u.phone, u.additionalInfo) " +
             "FROM UserEntity u WHERE u.id > :id ORDER BY u.id")
     List<UserFields> findNextBatch(@Param("id") UUID id, Limit limit);
+
+    int countByTenantIdAndAuthority(UUID tenantId, Authority authority);
 }

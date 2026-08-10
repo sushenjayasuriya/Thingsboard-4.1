@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ import org.thingsboard.server.common.msg.queue.TbCallback;
 import org.thingsboard.server.common.msg.rpc.FromDeviceRpcResponse;
 import org.thingsboard.server.common.util.ProtoUtils;
 import org.thingsboard.server.dao.queue.QueueService;
+import org.thingsboard.server.dao.resource.TbResourceDataCache;
 import org.thingsboard.server.dao.tenant.TbTenantProfileCache;
 import org.thingsboard.server.gen.transport.TransportProtos;
 import org.thingsboard.server.gen.transport.TransportProtos.QueueDeleteMsg;
@@ -78,13 +79,13 @@ public class DefaultTbRuleEngineConsumerService extends AbstractPartitionBasedCo
                                               QueueService queueService,
                                               TbDeviceProfileCache deviceProfileCache,
                                               TbAssetProfileCache assetProfileCache,
+                                              TbResourceDataCache tbResourceDataCache,
                                               TbTenantProfileCache tenantProfileCache,
                                               TbApiUsageStateService apiUsageStateService,
                                               PartitionService partitionService,
                                               ApplicationEventPublisher eventPublisher,
-                                              JwtSettingsService jwtSettingsService,
-                                              CalculatedFieldCache calculatedFieldCache) {
-        super(actorContext, tenantProfileCache, deviceProfileCache, assetProfileCache, calculatedFieldCache, apiUsageStateService, partitionService, eventPublisher, jwtSettingsService);
+                                              JwtSettingsService jwtSettingsService) {
+        super(actorContext, tenantProfileCache, deviceProfileCache, assetProfileCache, tbResourceDataCache, apiUsageStateService, partitionService, eventPublisher, jwtSettingsService);
         this.ctx = ctx;
         this.tbDeviceRpcService = tbDeviceRpcService;
         this.queueService = queueService;
@@ -179,9 +180,9 @@ public class DefaultTbRuleEngineConsumerService extends AbstractPartitionBasedCo
             callback.onSuccess();
         } else if (nfMsg.hasFromDeviceRpcResponse()) {
             TransportProtos.FromDeviceRPCResponseProto proto = nfMsg.getFromDeviceRpcResponse();
-            RpcError error = proto.getError() > 0 ? RpcError.values()[proto.getError()] : null;
+            RpcError error = RpcError.fromProtoErrorCode(proto.getError());
             FromDeviceRpcResponse response = new FromDeviceRpcResponse(new UUID(proto.getRequestIdMSB(), proto.getRequestIdLSB())
-                    , proto.getResponse(), error);
+                    , proto.hasResponse() ? proto.getResponse() : null, error);
             tbDeviceRpcService.processRpcResponseFromDevice(response);
             callback.onSuccess();
         } else if (nfMsg.getQueueUpdateMsgsCount() > 0) {

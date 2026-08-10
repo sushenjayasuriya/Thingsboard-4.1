@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,11 +54,13 @@ import org.thingsboard.server.common.data.security.Authority;
 import org.thingsboard.server.dao.device.DeviceProfileDao;
 import org.thingsboard.server.dao.exception.DataValidationException;
 import org.thingsboard.server.dao.service.DaoSqlTest;
+import org.awaitility.Awaitility;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -1028,11 +1030,17 @@ public class DeviceProfileControllerTest extends AbstractControllerTest {
         MqttDeviceProfileTransportConfiguration mqttDeviceProfileTransportConfiguration = this.createMqttDeviceProfileTransportConfiguration(protoTransportPayloadConfiguration, false);
         DeviceProfile deviceProfile = this.createDeviceProfile("Device Profile", mqttDeviceProfileTransportConfiguration);
 
-        Mockito.reset(tbClusterService, auditLogService);
-
-        doPost("/api/deviceProfile", deviceProfile)
-                .andExpect(status().isBadRequest())
-                .andExpect(statusReason(containsString(errorMsg)));
+        // The request may hit a transient TenantNotFoundException right after the @Before tenant creation
+        // if the tenant profile cache is not yet warmed up for the newly created tenant. Retry until the
+        // request returns the expected 400 Bad Request for the invalid schema. Mockito.reset is inside the
+        // retry loop so the subsequent verify* assertions see only the invocations from the last attempt.
+        Awaitility.await().atMost(10, TimeUnit.SECONDS).pollInterval(500, TimeUnit.MILLISECONDS)
+                .ignoreExceptions().untilAsserted(() -> {
+                    Mockito.reset(tbClusterService, auditLogService);
+                    doPost("/api/deviceProfile", deviceProfile)
+                            .andExpect(status().isBadRequest())
+                            .andExpect(statusReason(containsString(errorMsg)));
+                });
 
         testNotifyEntityEqualsOneTimeServiceNeverError(deviceProfile, savedTenant.getId(),
                 tenantAdmin.getId(), tenantAdmin.getEmail(), ActionType.ADDED, new DataValidationException(errorMsg));

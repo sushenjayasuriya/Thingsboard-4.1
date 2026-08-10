@@ -1,5 +1,5 @@
 ///
-/// Copyright © 2016-2025 The Thingsboard Authors
+/// Copyright © 2016-2026 The Thingsboard Authors
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -39,21 +39,22 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
-  selector: 'tb-arguments-map-config',
-  templateUrl: './arguments-map-config.component.html',
-  styleUrls: ['./arguments-map-config.component.scss'],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => ArgumentsMapConfigComponent),
-      multi: true
-    },
-    {
-      provide: NG_VALIDATORS,
-      useExisting: forwardRef(() => ArgumentsMapConfigComponent),
-      multi: true,
-    }
-  ]
+    selector: 'tb-arguments-map-config',
+    templateUrl: './arguments-map-config.component.html',
+    styleUrls: ['./arguments-map-config.component.scss'],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => ArgumentsMapConfigComponent),
+            multi: true
+        },
+        {
+            provide: NG_VALIDATORS,
+            useExisting: forwardRef(() => ArgumentsMapConfigComponent),
+            multi: true,
+        }
+    ],
+    standalone: false
 })
 export class ArgumentsMapConfigComponent extends PageComponent implements ControlValueAccessor, OnInit, Validator {
 
@@ -194,7 +195,7 @@ export class ArgumentsMapConfigComponent extends PageComponent implements Contro
       key: [property?.key, [Validators.required]],
       name: [ArgumentName[index], [Validators.required]],
       attributeScope: [property?.attributeScope ?? AttributeScope.SERVER_SCOPE, [Validators.required]],
-      defaultValue: [property?.defaultValue ? property?.defaultValue : null]
+      defaultValue: [property?.defaultValue ?? null]
     });
     this.updateArgumentControlValidators(argumentControl);
     argumentControl.get('type').valueChanges.pipe(

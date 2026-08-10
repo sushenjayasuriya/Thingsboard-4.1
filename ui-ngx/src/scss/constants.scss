@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,10 @@ $mat-lt-xl: "screen and (max-width: 1919px)";
 $mat-gt-xs: "screen and (min-width: 600px)";
 $mat-gt-sm: "screen and (min-width: 960px)";
 $mat-gt-md: "screen and (min-width: 1280px)";
+$mat-lt-xmd: "screen and (max-width: 1599px)";
 $mat-gt-xmd: "screen and (min-width: 1600px)";
+$mat-lt-xxl: "screen and (max-width: 2447px)";
+$mat-gt-xxl: "screen and (min-width: 2448px)";
 $mat-gt-xl: "screen and (min-width: 1920px)";
 $mat-md-lg: "screen and (min-width: 960px) and (max-width: 1819px)";
 

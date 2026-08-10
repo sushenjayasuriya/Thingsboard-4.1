@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,8 @@ import java.util.Collections;
 import java.util.Set;
 
 public enum Resource {
-    ADMIN_SETTINGS(),
+
+    ADMIN_SETTINGS(EntityType.ADMIN_SETTINGS),
     ALARM(EntityType.ALARM),
     DEVICE(EntityType.DEVICE),
     ASSET(EntityType.ASSET),
@@ -51,7 +52,8 @@ public enum Resource {
     NOTIFICATION(EntityType.NOTIFICATION_TARGET, EntityType.NOTIFICATION_TEMPLATE,
             EntityType.NOTIFICATION_REQUEST, EntityType.NOTIFICATION_RULE),
     MOBILE_APP_SETTINGS,
-    JOB(EntityType.JOB);
+    JOB(EntityType.JOB),
+    AI_MODEL(EntityType.AI_MODEL);
 
     private final Set<EntityType> entityTypes;
 
@@ -75,4 +77,5 @@ public enum Resource {
         }
         throw new IllegalArgumentException("Unknown EntityType: " + entityType.name());
     }
+
 }

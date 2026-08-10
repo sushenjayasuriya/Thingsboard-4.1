@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,6 +55,7 @@ import org.thingsboard.server.common.stats.StatsFactory;
 import org.thingsboard.server.common.util.KvProtoUtil;
 import org.thingsboard.server.common.util.ProtoUtils;
 import org.thingsboard.server.dao.resource.ImageCacheKey;
+import org.thingsboard.server.dao.resource.TbResourceDataCache;
 import org.thingsboard.server.dao.tenant.TbTenantProfileCache;
 import org.thingsboard.server.gen.transport.TransportProtos;
 import org.thingsboard.server.gen.transport.TransportProtos.DeviceStateServiceMsgProto;
@@ -176,10 +177,10 @@ public class DefaultTbCoreConsumerService extends AbstractConsumerService<ToCore
                                         NotificationSchedulerService notificationSchedulerService,
                                         NotificationRuleProcessor notificationRuleProcessor,
                                         TbImageService imageService,
+                                        TbResourceDataCache tbResourceDataCache,
                                         RuleEngineCallService ruleEngineCallService,
-                                        CalculatedFieldCache calculatedFieldCache,
                                         EdqsService edqsService) {
-        super(actorContext, tenantProfileCache, deviceProfileCache, assetProfileCache, calculatedFieldCache, apiUsageStateService, partitionService,
+        super(actorContext, tenantProfileCache, deviceProfileCache, assetProfileCache, tbResourceDataCache, apiUsageStateService, partitionService,
                 eventPublisher, jwtSettingsService);
         this.stateService = stateService;
         this.localSubscriptionService = localSubscriptionService;
@@ -464,10 +465,10 @@ public class DefaultTbCoreConsumerService extends AbstractConsumerService<ToCore
         return firmwareStateService.process(msg.getValue());
     }
 
-    private void forwardToCoreRpcService(FromDeviceRPCResponseProto proto, TbCallback callback) {
-        RpcError error = proto.getError() > 0 ? RpcError.values()[proto.getError()] : null;
+    void forwardToCoreRpcService(FromDeviceRPCResponseProto proto, TbCallback callback) {
+        RpcError error = RpcError.fromProtoErrorCode(proto.getError());
         FromDeviceRpcResponse response = new FromDeviceRpcResponse(new UUID(proto.getRequestIdMSB(), proto.getRequestIdLSB())
-                , proto.getResponse(), error);
+                , proto.hasResponse() ? proto.getResponse() : null, error);
         tbCoreDeviceRpcService.processRpcResponseFromRuleEngine(response);
         callback.onSuccess();
     }

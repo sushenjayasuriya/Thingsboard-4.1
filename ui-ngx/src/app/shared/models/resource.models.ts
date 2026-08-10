@@ -1,5 +1,5 @@
 ///
-/// Copyright © 2016-2025 The Thingsboard Authors
+/// Copyright © 2016-2026 The Thingsboard Authors
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,7 +24,8 @@ export enum ResourceType {
   LWM2M_MODEL = 'LWM2M_MODEL',
   PKCS_12 = 'PKCS_12',
   JKS = 'JKS',
-  JS_MODULE = 'JS_MODULE'
+  JS_MODULE = 'JS_MODULE',
+  GENERAL = 'GENERAL',
 }
 
 export enum ResourceSubType {
@@ -57,7 +58,8 @@ export const ResourceTypeTranslationMap = new Map<ResourceType, string>(
     [ResourceType.LWM2M_MODEL, 'resource.type.lwm2m-model'],
     [ResourceType.PKCS_12, 'resource.type.pkcs-12'],
     [ResourceType.JKS, 'resource.type.jks'],
-    [ResourceType.JS_MODULE, 'resource.type.js-module']
+    [ResourceType.JS_MODULE, 'resource.type.js-module'],
+    [ResourceType.GENERAL, 'resource.type.general'],
   ]
 );
 
@@ -76,8 +78,8 @@ export interface TbResourceInfo<D> extends Omit<BaseData<TbResourceId>, 'name' |
   title?: string;
   resourceType: ResourceType;
   resourceSubType?: ResourceSubType;
-  fileName: string;
-  public: boolean;
+  fileName?: string;
+  public?: boolean;
   publicResourceKey?: string;
   readonly link?: string;
   readonly publicLink?: string;
@@ -87,7 +89,7 @@ export interface TbResourceInfo<D> extends Omit<BaseData<TbResourceId>, 'name' |
 export type ResourceInfo = TbResourceInfo<any>;
 
 export interface Resource extends ResourceInfo {
-  data: string;
+  data?: string;
   name?: string;
 }
 

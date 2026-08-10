@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -326,6 +326,16 @@ public class TestRestClient {
                 .delete("/api/ruleChain/{ruleChainId}", ruleChainId.getId())
                 .then()
                 .statusCode(HTTP_OK);
+    }
+
+    public JsonNode testRuleChainScript(Object body) {
+        return given().spec(requestSpec)
+                .body(body)
+                .post("/api/ruleChain/testScript")
+                .then()
+                .statusCode(HTTP_OK)
+                .extract()
+                .as(JsonNode.class);
     }
 
     private String getUrlParams(PageLink pageLink) {

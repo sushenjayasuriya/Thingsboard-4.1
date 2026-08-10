@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,14 +18,14 @@ package org.thingsboard.server.queue.kafka;
 import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.thingsboard.server.queue.util.PropertyUtils;
+import org.thingsboard.server.queue.util.TbKafkaComponent;
 
 import java.util.Map;
 
 @Component
-@ConditionalOnProperty(prefix = "queue", value = "type", havingValue = "kafka")
+@TbKafkaComponent
 public class TbKafkaTopicConfigs {
 
     public static final String NUM_PARTITIONS_SETTING = "partitions";

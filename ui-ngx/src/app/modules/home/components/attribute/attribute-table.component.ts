@@ -1,5 +1,5 @@
 ///
-/// Copyright © 2016-2025 The Thingsboard Authors
+/// Copyright © 2016-2026 The Thingsboard Authors
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -56,6 +56,8 @@ import {
 import { AttributeDatasource } from '@home/models/datasource/attribute-datasource';
 import { AttributeService } from '@app/core/http/attribute.service';
 import { EntityType } from '@shared/models/entity-type.models';
+import { Authority } from '@shared/models/authority.enum';
+import { getCurrentAuthUser } from '@core/auth/auth.selectors';
 import { coerceBooleanProperty } from '@angular/cdk/coercion';
 import {
   AddAttributeDialogComponent,
@@ -76,7 +78,6 @@ import { AliasController } from '@core/api/alias-controller';
 import { EntityAlias, EntityAliases } from '@shared/models/alias.models';
 import { UtilsService } from '@core/services/utils.service';
 import { DashboardUtilsService } from '@core/services/dashboard-utils.service';
-import { NULL_UUID } from '@shared/models/id/has-uuid';
 import { WidgetService } from '@core/http/widget.service';
 import { toWidgetInfo } from '../../models/widget-component.models';
 import { EntityService } from '@core/http/entity.service';
@@ -89,13 +90,14 @@ import { Filters } from '@shared/models/query/query.models';
 import { hidePageSizePixelValue } from '@shared/models/constants';
 import { DeleteTimeseriesPanelComponent } from '@home/components/attribute/delete-timeseries-panel.component';
 import { FormBuilder } from '@angular/forms';
-
+import { coerceBoolean } from '@shared/decorators/coercion';
 
 @Component({
-  selector: 'tb-attribute-table',
-  templateUrl: './attribute-table.component.html',
-  styleUrls: ['./attribute-table.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+    selector: 'tb-attribute-table',
+    templateUrl: './attribute-table.component.html',
+    styleUrls: ['./attribute-table.component.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class AttributeTableComponent extends PageComponent implements AfterViewInit, OnInit, OnDestroy {
 
@@ -143,6 +145,10 @@ export class AttributeTableComponent extends PageComponent implements AfterViewI
   }
 
   @Input()
+  @coerceBoolean()
+  disableAddTelemetry: boolean;
+
+  @Input()
   set disableAttributeScopeSelection(value: boolean) {
     this.disableAttributeScopeSelectionValue = coerceBooleanProperty(value);
   }
@@ -184,6 +190,8 @@ export class AttributeTableComponent extends PageComponent implements AfterViewI
 
   textSearch = this.fb.control('', {nonNullable: true});
 
+  isSysAdmin = false;
+
   private destroy$ = new Subject<void>();
 
   constructor(protected store: Store<AppState>,
@@ -203,6 +211,7 @@ export class AttributeTableComponent extends PageComponent implements AfterViewI
               private elementRef: ElementRef,
               private fb: FormBuilder) {
     super(store);
+    this.isSysAdmin = getCurrentAuthUser(this.store).authority === Authority.SYS_ADMIN;
     this.dirtyValue = !this.activeValue;
     const sortOrder: SortOrder = { property: 'key', direction: Direction.ASC };
     this.pageLink = new PageLink(10, 0, null, sortOrder);

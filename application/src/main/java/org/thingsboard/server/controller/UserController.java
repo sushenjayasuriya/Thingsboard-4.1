@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -265,6 +265,9 @@ public class UserController extends BaseController {
         User user = checkUserId(userId, Operation.DELETE);
         if (user.getAuthority() == Authority.SYS_ADMIN && getCurrentUser().getId().equals(userId)) {
             throw new ThingsboardException("Sysadmin is not allowed to delete himself", ThingsboardErrorCode.PERMISSION_DENIED);
+        }
+        if (user.getAuthority() == Authority.TENANT_ADMIN && userService.countTenantAdmins(user.getTenantId()) == 1) {
+            throw new ThingsboardException("At least one tenant administrator must remain!", ThingsboardErrorCode.BAD_REQUEST_PARAMS);
         }
         tbUserService.delete(getTenantId(), getCurrentUser().getCustomerId(), user, getCurrentUser());
     }

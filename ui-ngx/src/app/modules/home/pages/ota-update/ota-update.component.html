@@ -1,6 +1,6 @@
 <!--
 
-    Copyright © 2016-2025 The Thingsboard Authors
+    Copyright © 2016-2026 The Thingsboard Authors
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -63,7 +63,7 @@
 </div>
 <div class="mat-padding flex flex-col gap-2">
   <form [formGroup]="entityForm">
-    <fieldset [disabled]="(isLoading$ | async) || !isEdit" class="flex flex-col">
+    <fieldset [disabled]="(isLoading$ | async) || !isEdit" class="flex flex-col min-w-full">
       <div class="flex flex-row xs:flex-col gt-xs:gap-2">
         <mat-form-field class="mat-block flex-full gt-xs:max-w-45%">
           <mat-label translate>ota-update.title</mat-label>
@@ -130,7 +130,7 @@
           </mat-checkbox>
         </section>
         <div class="flex flex-row xs:flex-col sm:gap-2 md:flex-col gt-xs:gap-2"
-             *ngIf="!(isAdd && this.entityForm.get('generateChecksum').value)">
+             *ngIf="!(isAdd && entityForm.get('generateChecksum').value)">
           <mat-form-field class="mat-block flex-full gt-xs:max-w-33%">
             <mat-label translate>ota-update.checksum-algorithm</mat-label>
             <mat-select formControlName="checksumAlgorithm">

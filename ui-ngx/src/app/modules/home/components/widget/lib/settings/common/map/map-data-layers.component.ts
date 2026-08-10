@@ -1,5 +1,5 @@
 ///
-/// Copyright © 2016-2025 The Thingsboard Authors
+/// Copyright © 2016-2026 The Thingsboard Authors
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -38,24 +38,26 @@ import {
 } from '@shared/models/widget/maps/map.models';
 import { MapSettingsComponent } from '@home/components/widget/lib/settings/common/map/map-settings.component';
 import { MapSettingsContext } from '@home/components/widget/lib/settings/common/map/map-settings.component.models';
+import { CdkDragDrop } from '@angular/cdk/drag-drop';
 
 @Component({
-  selector: 'tb-map-data-layers',
-  templateUrl: './map-data-layers.component.html',
-  styleUrls: ['./map-data-layers.component.scss'],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => MapDataLayersComponent),
-      multi: true
-    },
-    {
-      provide: NG_VALIDATORS,
-      useExisting: forwardRef(() => MapDataLayersComponent),
-      multi: true
-    }
-  ],
-  encapsulation: ViewEncapsulation.None
+    selector: 'tb-map-data-layers',
+    templateUrl: './map-data-layers.component.html',
+    styleUrls: ['./map-data-layers.component.scss'],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => MapDataLayersComponent),
+            multi: true
+        },
+        {
+            provide: NG_VALIDATORS,
+            useExisting: forwardRef(() => MapDataLayersComponent),
+            multi: true
+        }
+    ],
+    encapsulation: ViewEncapsulation.None,
+    standalone: false
 })
 export class MapDataLayersComponent implements ControlValueAccessor, OnInit, Validator {
 
@@ -78,6 +80,10 @@ export class MapDataLayersComponent implements ControlValueAccessor, OnInit, Val
   addDataLayerText: string;
 
   noDataLayersText: string;
+
+  get dragEnabled(): boolean {
+    return this.dataLayersFormArray().controls.length > 1;
+  }
 
   private propagateChange = (_val: any) => {};
 
@@ -161,6 +167,13 @@ export class MapDataLayersComponent implements ControlValueAccessor, OnInit, Val
 
   removeDataLayer(index: number) {
     (this.dataLayersFormGroup.get('dataLayers') as UntypedFormArray).removeAt(index);
+  }
+  
+  layerDrop(event: CdkDragDrop<string[]>) {
+    const layersArray = this.dataLayersFormArray();
+    const layer = layersArray.at(event.previousIndex);
+    layersArray.removeAt(event.previousIndex);
+    layersArray.insert(event.currentIndex, layer);
   }
 
   addDataLayer() {

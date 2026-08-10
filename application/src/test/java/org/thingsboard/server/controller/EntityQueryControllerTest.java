@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package org.thingsboard.server.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -26,6 +27,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.ResultActions;
 import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 import org.thingsboard.common.util.JacksonUtil;
+import org.thingsboard.server.common.data.AttributeScope;
 import org.thingsboard.server.common.data.Customer;
 import org.thingsboard.server.common.data.Dashboard;
 import org.thingsboard.server.common.data.DataConstants;
@@ -33,13 +35,19 @@ import org.thingsboard.server.common.data.Device;
 import org.thingsboard.server.common.data.EntityType;
 import org.thingsboard.server.common.data.StringUtils;
 import org.thingsboard.server.common.data.Tenant;
+import org.thingsboard.server.common.data.TenantProfile;
 import org.thingsboard.server.common.data.User;
 import org.thingsboard.server.common.data.alarm.Alarm;
 import org.thingsboard.server.common.data.alarm.AlarmSeverity;
+import org.thingsboard.server.common.data.asset.Asset;
 import org.thingsboard.server.common.data.id.DeviceId;
 import org.thingsboard.server.common.data.id.EntityId;
 import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.query.AlarmCountQuery;
+import org.thingsboard.server.common.data.query.AlarmData;
+import org.thingsboard.server.common.data.query.AlarmDataPageLink;
+import org.thingsboard.server.common.data.query.AlarmDataQuery;
+import org.thingsboard.server.common.data.query.AliasEntityId;
 import org.thingsboard.server.common.data.query.DeviceTypeFilter;
 import org.thingsboard.server.common.data.query.DynamicValue;
 import org.thingsboard.server.common.data.query.DynamicValueSourceType;
@@ -57,6 +65,7 @@ import org.thingsboard.server.common.data.query.FilterPredicateValue;
 import org.thingsboard.server.common.data.query.KeyFilter;
 import org.thingsboard.server.common.data.query.NumericFilterPredicate;
 import org.thingsboard.server.common.data.query.RelationsQueryFilter;
+import org.thingsboard.server.common.data.query.SingleEntityFilter;
 import org.thingsboard.server.common.data.query.StringFilterPredicate;
 import org.thingsboard.server.common.data.query.TsValue;
 import org.thingsboard.server.common.data.queue.QueueStats;
@@ -64,6 +73,8 @@ import org.thingsboard.server.common.data.relation.EntityRelation;
 import org.thingsboard.server.common.data.relation.EntitySearchDirection;
 import org.thingsboard.server.common.data.relation.RelationEntityTypeFilter;
 import org.thingsboard.server.common.data.security.Authority;
+import org.thingsboard.server.common.data.tenant.profile.DefaultTenantProfileConfiguration;
+import org.thingsboard.server.common.data.tenant.profile.TenantProfileData;
 import org.thingsboard.server.dao.queue.QueueStatsService;
 import org.thingsboard.server.dao.service.DaoSqlTest;
 
@@ -206,6 +217,64 @@ public class EntityQueryControllerTest extends AbstractControllerTest {
     }
 
     @Test
+    public void testEDQForSysAdmin() throws Exception {
+        loginSysAdmin();
+
+        ObjectNode tenantAttr = JacksonUtil.newObjectNode();
+        tenantAttr.put("attr", "tenantAttrValue");
+        doPost("/api/plugins/telemetry/TENANT/" + tenantId + "/attributes/" + AttributeScope.SERVER_SCOPE, tenantAttr);
+
+        loginTenantAdmin();
+        Device tenantDevice = new Device();
+        tenantDevice.setName("device " + StringUtils.randomAlphanumeric(10));
+        tenantDevice.setType("default");
+        tenantDevice = doPost("/api/device", tenantDevice, Device.class);
+
+        loginSysAdmin();
+        TenantProfile tenantProfile = doPost("/api/tenantProfile", createTenantProfile("Test tenant profile"), TenantProfile.class);
+
+        ObjectNode tenantProfileAttr = JacksonUtil.newObjectNode();
+        tenantProfileAttr.put("attr", "tenantProfileAttrValue");
+        doPost("/api/plugins/telemetry/TENANT_PROFILE/" + tenantProfile.getId() + "/attributes/" + AttributeScope.SERVER_SCOPE, tenantProfileAttr);
+
+        // check tenant telemetry is accessible for sysadmin
+        SingleEntityFilter filter = new SingleEntityFilter();
+        filter.setSingleEntity(AliasEntityId.fromEntityId(tenantId));
+        EntityDataSortOrder sortOrder = new EntityDataSortOrder(new EntityKey(EntityKeyType.ENTITY_FIELD, "createdTime"), EntityDataSortOrder.Direction.ASC);
+        EntityDataPageLink pageLink = new EntityDataPageLink(10, 0, null, sortOrder);
+        List<EntityKey> entityFields = List.of(new EntityKey(EntityKeyType.ENTITY_FIELD, "name"));
+        List<EntityKey> latestValues = List.of(new EntityKey(EntityKeyType.ATTRIBUTE, "attr"));
+        EntityDataQuery dataQuery = new EntityDataQuery(filter, pageLink, entityFields, latestValues, null);
+
+        PageData<EntityData> loadedTenants = findByQueryAndCheck(dataQuery, 1);
+        String retrievedTenantAttr = loadedTenants.getData().get(0).getLatest().get(EntityKeyType.ATTRIBUTE).get("attr").getValue();
+        assertThat(retrievedTenantAttr).isEqualTo("tenantAttrValue");
+
+        // check tenant profile telemetry is accessible for sysadmin
+        filter.setSingleEntity(AliasEntityId.fromEntityId(tenantProfile.getId()));
+
+        PageData<EntityData> loadedTenantProfiles = findByQueryAndCheck(dataQuery, 1);
+        String retrievedProfileAttr = loadedTenantProfiles.getData().get(0).getLatest().get(EntityKeyType.ATTRIBUTE).get("attr").getValue();
+        assertThat(retrievedProfileAttr).isEqualTo("tenantProfileAttrValue");
+
+        // check other tenant entities are prohibited
+        filter.setSingleEntity(AliasEntityId.fromEntityId(tenantDevice.getId()));
+        findByQueryAndCheck(dataQuery, 0);
+    }
+
+    private TenantProfile createTenantProfile(String name) {
+        TenantProfile tenantProfile = new TenantProfile();
+        tenantProfile.setName(name);
+        tenantProfile.setDescription(name + " Test");
+        TenantProfileData tenantProfileData = new TenantProfileData();
+        tenantProfileData.setConfiguration(new DefaultTenantProfileConfiguration());
+        tenantProfile.setProfileData(tenantProfileData);
+        tenantProfile.setDefault(false);
+        tenantProfile.setIsolatedTbRuleEngine(false);
+        return tenantProfile;
+    }
+
+    @Test
     public void testTenantCountAlarmsByQuery() throws Exception {
         loginTenantAdmin();
         List<Device> devices = new ArrayList<>();
@@ -228,6 +297,59 @@ public class EntityQueryControllerTest extends AbstractControllerTest {
             Thread.sleep(1);
         }
         testCountAlarmsByQuery(alarms);
+    }
+
+    @Test
+    public void testTenantCountAlarmsWithEntityFilter() throws Exception {
+        loginTenantAdmin();
+        List<Device> devices = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            Device device = new Device();
+            device.setName("Device" + i);
+            device.setType("default");
+            device.setLabel("testLabel" + (int) (Math.random() * 1000));
+            Device savedDevice = doPost("/api/device", device, Device.class);
+            devices.add(savedDevice);
+            Thread.sleep(1);
+
+            Alarm alarm = new Alarm();
+            alarm.setOriginator(savedDevice.getId());
+            alarm.setType("alarm" + i);
+            alarm.setSeverity(AlarmSeverity.WARNING);
+            doPost("/api/alarm", alarm, Alarm.class);
+            Thread.sleep(1);
+        }
+
+        List<Asset> assets = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            Asset asset = new Asset();
+            asset.setName("Asset" + i);
+            asset.setType("default");
+            asset.setLabel("testLabel" + (int) (Math.random() * 1000));
+            Asset savedAsset = doPost("/api/asset", asset, Asset.class);
+            assets.add(savedAsset);
+            Thread.sleep(1);
+
+            Alarm alarm = new Alarm();
+            alarm.setOriginator(savedAsset.getId());
+            alarm.setType("alarm" + i);
+            alarm.setSeverity(AlarmSeverity.WARNING);
+            doPost("/api/alarm", alarm, Alarm.class);
+            Thread.sleep(1);
+        }
+
+        EntityTypeFilter assetTypeFilter = new EntityTypeFilter();
+        assetTypeFilter.setEntityType(EntityType.ASSET);
+        AlarmCountQuery assetAlarmQuery = new AlarmCountQuery(assetTypeFilter);
+
+        countAlarmsByQueryAndCheck(assetAlarmQuery, assets.size());
+
+        KeyFilter nameFilter = buildStringKeyFilter(EntityKeyType.ENTITY_FIELD, "name", StringFilterPredicate.StringOperation.STARTS_WITH, "Asset1");
+        List<KeyFilter> keyFilters = Collections.singletonList(nameFilter);
+        AlarmCountQuery filteredAssetAlarmQuery = new AlarmCountQuery(assetTypeFilter, keyFilters);
+
+        Long filteredAssetAlamCount = doPostWithResponse("/api/alarmsQuery/count", filteredAssetAlarmQuery, Long.class);
+        Assert.assertEquals(1, filteredAssetAlamCount.longValue());
     }
 
     @Test
@@ -257,6 +379,269 @@ public class EntityQueryControllerTest extends AbstractControllerTest {
             Thread.sleep(1);
         }
         testCountAlarmsByQuery(alarms);
+    }
+
+    @Test
+    public void testCustomerCountAlarmsWithEntityFilter() throws Exception {
+        loginTenantAdmin();
+        List<Device> devices = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            Device device = new Device();
+            device.setCustomerId(customerId);
+            device.setName("Device" + i);
+            device.setType("default");
+            device.setLabel("testLabel" + (int) (Math.random() * 1000));
+            devices.add(doPost("/api/device", device, Device.class));
+            Thread.sleep(1);
+        }
+
+        List<Asset> assets = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            Asset asset = new Asset();
+            asset.setCustomerId(customerId);
+            asset.setName("Asset" + i);
+            asset.setType("default");
+            asset.setLabel("testLabel" + (int) (Math.random() * 1000));
+            assets.add(doPost("/api/asset", asset, Asset.class));
+            Thread.sleep(1);
+        }
+
+        loginCustomerUser();
+
+        for (int i = 0; i < devices.size(); i++) {
+            Alarm alarm = new Alarm();
+            alarm.setCustomerId(customerId);
+            alarm.setOriginator(devices.get(i).getId());
+            alarm.setType("alarm" + i);
+            alarm.setSeverity(AlarmSeverity.WARNING);
+            doPost("/api/alarm", alarm, Alarm.class);
+            Thread.sleep(1);
+        }
+
+        for (int i = 0; i < assets.size(); i++) {
+            Alarm alarm = new Alarm();
+            alarm.setCustomerId(customerId);
+            alarm.setOriginator(assets.get(i).getId());
+            alarm.setType("alarm" + i);
+            alarm.setSeverity(AlarmSeverity.WARNING);
+            doPost("/api/alarm", alarm, Alarm.class);
+            Thread.sleep(1);
+        }
+
+        EntityTypeFilter assetTypeFilter = new EntityTypeFilter();
+        assetTypeFilter.setEntityType(EntityType.ASSET);
+        AlarmCountQuery assetAlarmQuery = new AlarmCountQuery(assetTypeFilter);
+
+        countAlarmsByQueryAndCheck(assetAlarmQuery, 10);
+
+        KeyFilter nameFilter = buildStringKeyFilter(EntityKeyType.ENTITY_FIELD, "name", StringFilterPredicate.StringOperation.STARTS_WITH, "Asset1");
+        List<KeyFilter> keyFilters = Collections.singletonList(nameFilter);
+        AlarmCountQuery filteredAssetAlarmQuery = new AlarmCountQuery(assetTypeFilter, keyFilters);
+
+        Long filteredAssetAlamCount = doPostWithResponse("/api/alarmsQuery/count", filteredAssetAlarmQuery, Long.class);
+        Assert.assertEquals(1, filteredAssetAlamCount.longValue());
+    }
+
+    @Test
+    public void testFindTenantAlarmsWithEntityFilter() throws Exception {
+        loginTenantAdmin();
+        List<Device> devices = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            Device device = new Device();
+            device.setCustomerId(customerId);
+            device.setName("Device" + i);
+            device.setType("default");
+            device.setLabel("testLabel" + (int) (Math.random() * 1000));
+            devices.add(doPost("/api/device", device, Device.class));
+            Thread.sleep(1);
+        }
+
+        List<Asset> assets = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            Asset asset = new Asset();
+            asset.setCustomerId(customerId);
+            asset.setName("Asset" + i);
+            asset.setType("default");
+            asset.setLabel("testLabel" + (int) (Math.random() * 1000));
+            assets.add(doPost("/api/asset", asset, Asset.class));
+            Thread.sleep(1);
+        }
+
+        for (int i = 0; i < devices.size(); i++) {
+            Alarm alarm = new Alarm();
+            alarm.setOriginator(devices.get(i).getId());
+            alarm.setType("alarm" + i);
+            alarm.setSeverity(AlarmSeverity.WARNING);
+            doPost("/api/alarm", alarm, Alarm.class);
+            Thread.sleep(1);
+        }
+
+        List<String> assetAlarmTypes = new ArrayList<>();
+        for (int i = 0; i < assets.size(); i++) {
+            Alarm alarm = new Alarm();
+            alarm.setOriginator(assets.get(i).getId());
+            String type = "asset alarm" + i;
+            alarm.setType(type);
+            assetAlarmTypes.add(type);
+            alarm.setSeverity(AlarmSeverity.WARNING);
+            doPost("/api/alarm", alarm, Alarm.class);
+            Thread.sleep(1);
+        }
+
+        AlarmDataPageLink pageLink = new AlarmDataPageLink();
+        pageLink.setPage(0);
+        pageLink.setPageSize(100);
+        pageLink.setSortOrder(new EntityDataSortOrder(new EntityKey(EntityKeyType.ALARM_FIELD, "assignee")));
+
+        List<EntityKey> alarmFields = new ArrayList<>();
+        alarmFields.add(new EntityKey(EntityKeyType.ALARM_FIELD, "type"));
+
+        EntityTypeFilter assetTypeFilter = new EntityTypeFilter();
+        assetTypeFilter.setEntityType(EntityType.ASSET);
+        AlarmDataQuery assetAlarmQuery =  new AlarmDataQuery(assetTypeFilter, pageLink, null, null, null, alarmFields);
+
+        PageData<AlarmData> alarmPageData = findAlarmsByQueryAndCheck(assetAlarmQuery, 10);
+        List<String> retrievedAlarmTypes = alarmPageData.getData().stream().map(Alarm::getType).toList();
+        assertThat(retrievedAlarmTypes).containsExactlyInAnyOrderElementsOf(assetAlarmTypes);
+
+        KeyFilter nameFilter = buildStringKeyFilter(EntityKeyType.ENTITY_FIELD, "name", StringFilterPredicate.StringOperation.STARTS_WITH, "Asset1");
+        List<KeyFilter> keyFilters = Collections.singletonList(nameFilter);
+        AlarmDataQuery filteredAssetAlarmQuery =  new AlarmDataQuery(assetTypeFilter, pageLink, null, null, keyFilters, alarmFields);
+        PageData<AlarmData>  filteredAssetAlamData = doPostWithTypedResponse("/api/alarmsQuery/find", filteredAssetAlarmQuery, new TypeReference<>() {
+        });
+        Assert.assertEquals(1, filteredAssetAlamData.getTotalElements());
+    }
+
+    @Test
+    public void testFindCustomerAlarmsWithEntityFilter() throws Exception {
+        loginTenantAdmin();
+        List<Device> devices = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            Device device = new Device();
+            device.setCustomerId(customerId);
+            device.setName("Device" + i);
+            device.setType("default");
+            device.setLabel("testLabel" + (int) (Math.random() * 1000));
+            devices.add(doPost("/api/device", device, Device.class));
+            Thread.sleep(1);
+        }
+
+        List<Asset> assets = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            Asset asset = new Asset();
+            asset.setCustomerId(customerId);
+            asset.setName("Asset" + i);
+            asset.setType("default");
+            asset.setLabel("testLabel" + (int) (Math.random() * 1000));
+            assets.add(doPost("/api/asset", asset, Asset.class));
+            Thread.sleep(1);
+        }
+
+        loginCustomerUser();
+
+        for (int i = 0; i < devices.size(); i++) {
+            Alarm alarm = new Alarm();
+            alarm.setCustomerId(customerId);
+            alarm.setOriginator(devices.get(i).getId());
+            alarm.setType("alarm" + i);
+            alarm.setSeverity(AlarmSeverity.WARNING);
+            doPost("/api/alarm", alarm, Alarm.class);
+            Thread.sleep(1);
+        }
+
+        List<String> assetAlarmTypes = new ArrayList<>();
+        for (int i = 0; i < assets.size(); i++) {
+            Alarm alarm = new Alarm();
+            alarm.setCustomerId(customerId);
+            alarm.setOriginator(assets.get(i).getId());
+            String type = "asset alarm" + i;
+            alarm.setType(type);
+            assetAlarmTypes.add(type);
+            alarm.setSeverity(AlarmSeverity.WARNING);
+            doPost("/api/alarm", alarm, Alarm.class);
+            Thread.sleep(1);
+        }
+
+        AlarmDataPageLink pageLink = new AlarmDataPageLink();
+        pageLink.setPage(0);
+        pageLink.setPageSize(100);
+        pageLink.setSortOrder(new EntityDataSortOrder(new EntityKey(EntityKeyType.ALARM_FIELD, "assignee")));
+
+        EntityTypeFilter assetTypeFilter = new EntityTypeFilter();
+        assetTypeFilter.setEntityType(EntityType.ASSET);
+        AlarmDataQuery assetAlarmQuery =  new AlarmDataQuery(assetTypeFilter, pageLink, null, null, null, Collections.emptyList());
+
+        PageData<AlarmData>  alarmPageData = findAlarmsByQueryAndCheck(assetAlarmQuery, 10);
+        List<String> retrievedAlarmTypes = alarmPageData.getData().stream().map(Alarm::getType).toList();
+        assertThat(retrievedAlarmTypes).containsExactlyInAnyOrderElementsOf(assetAlarmTypes);
+
+        KeyFilter nameFilter = buildStringKeyFilter(EntityKeyType.ENTITY_FIELD, "name", StringFilterPredicate.StringOperation.STARTS_WITH, "Asset1");
+        List<KeyFilter> keyFilters = Collections.singletonList(nameFilter);
+        AlarmDataQuery filteredAssetAlarmQuery =  new AlarmDataQuery(assetTypeFilter, pageLink, null, null, keyFilters, Collections.emptyList());
+        PageData<AlarmData>  filteredAssetAlamData = doPostWithTypedResponse("/api/alarmsQuery/find", filteredAssetAlarmQuery, new TypeReference<>() {
+        });
+        Assert.assertEquals(1, filteredAssetAlamData.getTotalElements());
+    }
+
+    @Test
+    public void testFindAlarmsWithEntityFilterAndLatestValues() throws Exception {
+        loginTenantAdmin();
+        List<Device> devices = new ArrayList<>();
+        List<String> temps = new ArrayList<>();
+        List<String> deviceNames = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            Device device = new Device();
+            device.setCustomerId(customerId);
+            device.setName("Device" + i);
+            device.setType("default");
+            device.setLabel("testLabel" + (int) (Math.random() * 1000));
+            device = doPost("/api/device", device, Device.class);
+            devices.add(device);
+            deviceNames.add(device.getName());
+
+            int temp = i * 10;
+            temps.add(String.valueOf(temp));
+            JsonNode content = JacksonUtil.toJsonNode("{\"temperature\": " + temp + "}");
+            doPost("/api/plugins/telemetry/" + EntityType.DEVICE.name() + "/" + device.getUuidId() + "/timeseries/SERVER_SCOPE", content)
+                    .andExpect(status().isOk());
+            Thread.sleep(1);
+        }
+
+        for (int i = 0; i < devices.size(); i++) {
+            Alarm alarm = new Alarm();
+            alarm.setCustomerId(customerId);
+            alarm.setOriginator(devices.get(i).getId());
+            String type = "device alarm" + i;
+            alarm.setType(type);
+            alarm.setSeverity(AlarmSeverity.WARNING);
+            doPost("/api/alarm", alarm, Alarm.class);
+            Thread.sleep(1);
+        }
+
+        AlarmDataPageLink pageLink = new AlarmDataPageLink();
+        pageLink.setPage(0);
+        pageLink.setPageSize(100);
+        pageLink.setSortOrder(new EntityDataSortOrder(new EntityKey(EntityKeyType.ALARM_FIELD, "created_time")));
+
+        List<EntityKey> alarmFields = new ArrayList<>();
+        alarmFields.add(new EntityKey(EntityKeyType.ALARM_FIELD, "type"));
+
+        List<EntityKey> entityFields = new ArrayList<>();
+        entityFields.add(new EntityKey(EntityKeyType.ENTITY_FIELD, "name"));
+
+        List<EntityKey> latestValues = new ArrayList<>();
+        latestValues.add(new EntityKey(EntityKeyType.TIME_SERIES, "temperature"));
+
+        EntityTypeFilter deviceTypeFilter = new EntityTypeFilter();
+        deviceTypeFilter.setEntityType(EntityType.DEVICE);
+        AlarmDataQuery deviceAlarmQuery =  new AlarmDataQuery(deviceTypeFilter, pageLink, entityFields, latestValues, null, alarmFields);
+
+        PageData<AlarmData> alarmPageData = findAlarmsByQueryAndCheck(deviceAlarmQuery, 10);
+        List<String> retrievedAlarmTemps = alarmPageData.getData().stream().map(alarmData -> alarmData.getLatest().get(EntityKeyType.TIME_SERIES).get("temperature").getValue()).toList();
+        assertThat(retrievedAlarmTemps).containsExactlyInAnyOrderElementsOf(temps);
+
+        List<String> retrievedDeviceNames = alarmPageData.getData().stream().map(alarmData -> alarmData.getLatest().get(EntityKeyType.ENTITY_FIELD).get("name").getValue()).toList();
+        assertThat(retrievedDeviceNames).containsExactlyInAnyOrderElementsOf(deviceNames);
     }
 
     private void testCountAlarmsByQuery(List<Alarm> alarms) throws Exception {
@@ -442,7 +827,7 @@ public class EntityQueryControllerTest extends AbstractControllerTest {
         }
 
         RelationsQueryFilter filter = new RelationsQueryFilter();
-        filter.setRootEntity(mainDevice.getId());
+        filter.setRootEntity(AliasEntityId.fromEntityId(mainDevice.getId()));
         filter.setDirection(EntitySearchDirection.FROM);
         filter.setNegate(true);
         filter.setFilters(List.of(new RelationEntityTypeFilter("CONTAINS", List.of(EntityType.DEVICE), false)));
@@ -658,7 +1043,7 @@ public class EntityQueryControllerTest extends AbstractControllerTest {
         List<QueueStats> queueStatsList = new ArrayList<>();
         for (int i = 0; i < 97; i++) {
             QueueStats queueStats = new QueueStats();
-            queueStats.setQueueName(StringUtils.randomAlphabetic(5));
+            queueStats.setQueueName("test" + StringUtils.randomAlphabetic(5));
             queueStats.setServiceId(StringUtils.randomAlphabetic(5));
             queueStats.setTenantId(savedTenant.getTenantId());
             queueStatsList.add(queueStatsService.save(savedTenant.getId(), queueStats));
@@ -674,8 +1059,11 @@ public class EntityQueryControllerTest extends AbstractControllerTest {
         EntityDataPageLink pageLink = new EntityDataPageLink(10, 0, null, sortOrder);
         List<EntityKey> entityFields = Arrays.asList(new EntityKey(EntityKeyType.ENTITY_FIELD, "name"), new EntityKey(EntityKeyType.ENTITY_FIELD, "queueName"),
                 new EntityKey(EntityKeyType.ENTITY_FIELD, "serviceId"));
+        List<KeyFilter> keyFilters = Collections.singletonList(
+                getEntityFieldStartsWithFilter("queueName", "test")
+        );
 
-        EntityDataQuery query = new EntityDataQuery(entityTypeFilter, pageLink, entityFields, null, null);
+        EntityDataQuery query = new EntityDataQuery(entityTypeFilter, pageLink, entityFields, null, keyFilters);
 
         PageData<EntityData> data = findByQueryAndCheck(query, 97);
         Assert.assertEquals(10, data.getTotalPages());
@@ -690,7 +1078,7 @@ public class EntityQueryControllerTest extends AbstractControllerTest {
 
         });
 
-        EntityCountQuery countQuery = new EntityCountQuery(entityTypeFilter);
+        EntityCountQuery countQuery = new EntityCountQuery(entityTypeFilter, keyFilters);
         countByQueryAndCheck(countQuery, 97);
     }
 
@@ -717,10 +1105,10 @@ public class EntityQueryControllerTest extends AbstractControllerTest {
 
         KeyFilter activeAlarmTimeFilter = getServerAttributeNumericGreaterThanKeyFilter("alarmActiveTime", 5);
         KeyFilter activeAlarmTimeToLongFilter = getServerAttributeNumericGreaterThanKeyFilter("alarmActiveTime", 30);
-        KeyFilter tenantOwnerNameFilter = getEntityFieldStringEqualToKeyFilter("ownerName", TEST_TENANT_NAME);
-        KeyFilter wrongOwnerNameFilter = getEntityFieldStringEqualToKeyFilter("ownerName", "wrongName");
-        KeyFilter tenantOwnerTypeFilter = getEntityFieldStringEqualToKeyFilter("ownerType", "TENANT");
-        KeyFilter customerOwnerTypeFilter = getEntityFieldStringEqualToKeyFilter("ownerType", "CUSTOMER");
+        KeyFilter tenantOwnerNameFilter = getEntityFieldEqualFilter("ownerName", TEST_TENANT_NAME);
+        KeyFilter wrongOwnerNameFilter = getEntityFieldEqualFilter("ownerName", "wrongName");
+        KeyFilter tenantOwnerTypeFilter = getEntityFieldEqualFilter("ownerType", "TENANT");
+        KeyFilter customerOwnerTypeFilter = getEntityFieldEqualFilter("ownerType", "CUSTOMER");
 
         // all devices with ownerName = TEST TENANT
         EntityCountQuery query = new EntityCountQuery(filter, List.of(activeAlarmTimeFilter, tenantOwnerNameFilter));
@@ -766,10 +1154,10 @@ public class EntityQueryControllerTest extends AbstractControllerTest {
         filter.setDeviceNameFilter("");
 
         KeyFilter activeAlarmTimeFilter = getServerAttributeNumericGreaterThanKeyFilter("alarmActiveTime", 5);
-        KeyFilter tenantOwnerNameFilter = getEntityFieldStringEqualToKeyFilter("ownerName", TEST_TENANT_NAME);
-        KeyFilter wrongOwnerNameFilter = getEntityFieldStringEqualToKeyFilter("ownerName", "wrongName");
-        KeyFilter tenantOwnerTypeFilter = getEntityFieldStringEqualToKeyFilter("ownerType", "TENANT");
-        KeyFilter customerOwnerTypeFilter = getEntityFieldStringEqualToKeyFilter("ownerType", "CUSTOMER");
+        KeyFilter tenantOwnerNameFilter = getEntityFieldEqualFilter("ownerName", TEST_TENANT_NAME);
+        KeyFilter wrongOwnerNameFilter = getEntityFieldEqualFilter("ownerName", "wrongName");
+        KeyFilter tenantOwnerTypeFilter = getEntityFieldEqualFilter("ownerType", "TENANT");
+        KeyFilter customerOwnerTypeFilter = getEntityFieldEqualFilter("ownerType", "CUSTOMER");
 
         EntityDataSortOrder sortOrder = new EntityDataSortOrder(
                 new EntityKey(EntityKeyType.ENTITY_FIELD, "createdTime"), EntityDataSortOrder.Direction.ASC
@@ -875,8 +1263,18 @@ public class EntityQueryControllerTest extends AbstractControllerTest {
         });
     }
 
+    protected PageData<AlarmData> findAlarmsByQuery(AlarmDataQuery query) throws Exception {
+        return doPostWithTypedResponse("/api/alarmsQuery/find", query, new TypeReference<>() {});
+    }
+
     protected PageData<EntityData> findByQueryAndCheck(EntityDataQuery query, int expectedResultSize) throws Exception {
         PageData<EntityData> result = findByQuery(query);
+        assertThat(result.getTotalElements()).isEqualTo(expectedResultSize);
+        return result;
+    }
+
+    protected PageData<AlarmData> findAlarmsByQueryAndCheck(AlarmDataQuery query, int expectedResultSize) throws Exception {
+        PageData<AlarmData> result = findAlarmsByQuery(query);
         assertThat(result.getTotalElements()).isEqualTo(expectedResultSize);
         return result;
     }
@@ -885,21 +1283,39 @@ public class EntityQueryControllerTest extends AbstractControllerTest {
         return doPostWithResponse("/api/entitiesQuery/count", countQuery, Long.class);
     }
 
+    protected Long countAlarmsByQuery(AlarmCountQuery countQuery) throws Exception {
+        return doPostWithResponse("/api/alarmsQuery/count", countQuery, Long.class);
+    }
+
     protected Long countByQueryAndCheck(EntityCountQuery query, long expectedResult) throws Exception {
         Long result = countByQuery(query);
         assertThat(result).isEqualTo(expectedResult);
         return result;
     }
 
-    private KeyFilter getEntityFieldStringEqualToKeyFilter(String keyName, String value) {
-        KeyFilter tenantOwnerNameFilter = new KeyFilter();
-        tenantOwnerNameFilter.setKey(new EntityKey(EntityKeyType.ENTITY_FIELD, keyName));
-        tenantOwnerNameFilter.setValueType(EntityKeyValueType.STRING);
-        StringFilterPredicate ownerNamePredicate = new StringFilterPredicate();
-        ownerNamePredicate.setValue(FilterPredicateValue.fromString(value));
-        ownerNamePredicate.setOperation(StringFilterPredicate.StringOperation.EQUAL);
-        tenantOwnerNameFilter.setPredicate(ownerNamePredicate);
-        return tenantOwnerNameFilter;
+    protected Long countAlarmsByQueryAndCheck(AlarmCountQuery query, long expectedResult) throws Exception {
+        Long result = countAlarmsByQuery(query);
+        assertThat(result).isEqualTo(expectedResult);
+        return result;
+    }
+
+    private KeyFilter getEntityFieldEqualFilter(String keyName, String value) {
+        return getEntityFieldKeyFilter(keyName, value, StringFilterPredicate.StringOperation.EQUAL);
+    }
+
+    private KeyFilter getEntityFieldStartsWithFilter(String keyName, String value) {
+        return getEntityFieldKeyFilter(keyName, value, StringFilterPredicate.StringOperation.STARTS_WITH);
+    }
+
+    private KeyFilter getEntityFieldKeyFilter(String keyName, String value, StringFilterPredicate.StringOperation operation) {
+        KeyFilter filter = new KeyFilter();
+        filter.setKey(new EntityKey(EntityKeyType.ENTITY_FIELD, keyName));
+        filter.setValueType(EntityKeyValueType.STRING);
+        StringFilterPredicate predicate = new StringFilterPredicate();
+        predicate.setValue(FilterPredicateValue.fromString(value));
+        predicate.setOperation(operation);
+        filter.setPredicate(predicate);
+        return filter;
     }
 
     private KeyFilter getServerAttributeNumericGreaterThanKeyFilter(String attribute, int value) {
@@ -911,6 +1327,16 @@ public class EntityQueryControllerTest extends AbstractControllerTest {
         predicate.setOperation(NumericFilterPredicate.NumericOperation.GREATER);
         numericFilter.setPredicate(predicate);
         return numericFilter;
+    }
+
+    private KeyFilter buildStringKeyFilter(EntityKeyType entityKeyType, String name, StringFilterPredicate.StringOperation operation, String value) {
+        KeyFilter nameFilter = new KeyFilter();
+        nameFilter.setKey(new EntityKey(entityKeyType, name));
+        StringFilterPredicate predicate = new StringFilterPredicate();
+        predicate.setOperation(operation);
+        predicate.setValue(FilterPredicateValue.fromString(value));
+        nameFilter.setPredicate(predicate);
+        return nameFilter;
     }
 
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import org.springframework.jdbc.core.StatementCallback;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.thingsboard.server.service.install.lts.LtsMigrationService;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -42,18 +43,26 @@ public class SqlDatabaseUpgradeService implements DatabaseEntitiesUpgradeService
     private final InstallScripts installScripts;
     private final JdbcTemplate jdbcTemplate;
     private final TransactionTemplate transactionTemplate;
+    private final DatabaseSchemaSettingsService schemaSettingsService;
+    private final LtsMigrationService ltsMigrationService;
 
-    public SqlDatabaseUpgradeService(InstallScripts installScripts, JdbcTemplate jdbcTemplate, PlatformTransactionManager transactionManager) {
+    public SqlDatabaseUpgradeService(InstallScripts installScripts, JdbcTemplate jdbcTemplate,
+                                     PlatformTransactionManager transactionManager,
+                                     DatabaseSchemaSettingsService schemaSettingsService,
+                                     LtsMigrationService ltsMigrationService) {
         this.installScripts = installScripts;
         this.jdbcTemplate = jdbcTemplate;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.transactionTemplate.setTimeout((int) TimeUnit.MINUTES.toSeconds(120));
+        this.schemaSettingsService = schemaSettingsService;
+        this.ltsMigrationService = ltsMigrationService;
     }
 
     @Override
     public void upgradeDatabase() {
         log.info("Updating schema...");
         loadSql(getSchemaUpdateFile("basic"));
+        ltsMigrationService.runSchemaMigrations(schemaSettingsService.getDbSchemaVersion(), schemaSettingsService.getPackageSchemaVersion());
         log.info("Schema updated.");
     }
 

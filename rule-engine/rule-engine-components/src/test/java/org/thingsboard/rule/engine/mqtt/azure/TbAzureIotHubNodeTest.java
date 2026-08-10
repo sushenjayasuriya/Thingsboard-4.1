@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,6 +34,9 @@ import org.thingsboard.rule.engine.api.TbNodeConfiguration;
 import org.thingsboard.rule.engine.credentials.CertPemCredentials;
 import org.thingsboard.rule.engine.mqtt.TbMqttNodeConfiguration;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -77,7 +80,10 @@ public class TbAzureIotHubNodeTest extends AbstractRuleNodeUpgradeTest {
 
     @Test
     public void verifyPrepareMqttClientConfigMethodWithAzureIotHubSasCredentials() throws Exception {
-        AzureIotHubSasCredentials credentials = new AzureIotHubSasCredentials();
+        var fixedClock = Clock.fixed(Instant.parse("2030-01-01T00:00:00Z"), ZoneOffset.UTC);
+        azureIotHubNode.setClock(fixedClock);
+
+        var credentials = new AzureIotHubSasCredentials();
         credentials.setSasKey("testSasKey");
         credentials.setCaCert("test-ca-cert.pem");
         azureIotHubNodeConfig.setCredentials(credentials);
@@ -89,7 +95,7 @@ public class TbAzureIotHubNodeTest extends AbstractRuleNodeUpgradeTest {
         azureIotHubNode.prepareMqttClientConfig(mqttClientConfig);
 
         assertThat(mqttClientConfig.getUsername()).isEqualTo(AzureIotHubUtil.buildUsername(azureIotHubNodeConfig.getHost(), mqttClientConfig.getClientId()));
-        assertThat(mqttClientConfig.getPassword()).isEqualTo(AzureIotHubUtil.buildSasToken(azureIotHubNodeConfig.getHost(), credentials.getSasKey()));
+        assertThat(mqttClientConfig.getPassword()).isEqualTo(AzureIotHubUtil.buildSasToken(azureIotHubNodeConfig.getHost(), credentials.getSasKey(), fixedClock));
     }
 
     @Test

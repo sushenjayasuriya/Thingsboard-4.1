@@ -1,5 +1,5 @@
 ///
-/// Copyright © 2016-2025 The Thingsboard Authors
+/// Copyright © 2016-2026 The Thingsboard Authors
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -35,6 +35,8 @@ import { AddQuickLinkDialogComponent } from '@home/components/widget/lib/home-pa
 import {
   RecentDashboardsWidgetComponent
 } from '@home/components/widget/lib/home-page/recent-dashboards-widget.component';
+import { IotHubWidgetComponent } from '@home/components/widget/lib/home-page/iot-hub-widget.component';
+import { IotHubComponentsModule } from '@home/components/iot-hub/iot-hub-components.module';
 
 @NgModule({
   declarations:
@@ -52,11 +54,13 @@ import {
       QuickLinksWidgetComponent,
       QuickLinkComponent,
       AddQuickLinkDialogComponent,
-      RecentDashboardsWidgetComponent
+      RecentDashboardsWidgetComponent,
+      IotHubWidgetComponent
     ],
   imports: [
     CommonModule,
-    SharedModule
+    SharedModule,
+    IotHubComponentsModule
   ],
   exports: [
     ClusterInfoTableComponent,
@@ -72,7 +76,8 @@ import {
     QuickLinksWidgetComponent,
     QuickLinkComponent,
     AddQuickLinkDialogComponent,
-    RecentDashboardsWidgetComponent
+    RecentDashboardsWidgetComponent,
+    IotHubWidgetComponent
   ]
 })
 export class HomePageWidgetsModule { }

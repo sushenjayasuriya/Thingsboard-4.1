@@ -1,5 +1,5 @@
 ///
-/// Copyright © 2016-2025 The Thingsboard Authors
+/// Copyright © 2016-2026 The Thingsboard Authors
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ export type VolumeFlowMetricUnits =
   | 'L/min'
   | 'L/hr'
   | 'm³/s'
+  | 'm³/min'
   | 'm³/hr';
 
 export type VolumeFlowImperialUnits =
@@ -66,6 +67,11 @@ const METRIC: TbMeasureUnits<VolumeFlowMetricUnits> = {
       name: 'unit.cubic-meters-per-second',
       tags: ['airflow', 'ventilation', 'HVAC', 'gas flow rate'],
       to_anchor: 1000,
+    },
+    'm³/min': {
+      name: 'unit.cubic-meters-per-minute',
+      tags: ['airflow', 'ventilation', 'HVAC', 'gas flow rate'],
+      to_anchor: 1000 / 60,
     },
     'm³/hr': {
       name: 'unit.cubic-meters-per-hour',

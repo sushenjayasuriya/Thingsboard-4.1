@@ -1,6 +1,6 @@
 <!--
 
-    Copyright © 2016-2025 The Thingsboard Authors
+    Copyright © 2016-2026 The Thingsboard Authors
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
     limitations under the License.
 
 -->
-<section class="mat-padding flex flex-col" [formGroup]="entityForm">
+<section class="mat-padding tb-form-panel outlined" [formGroup]="entityForm">
   <mat-form-field appearance="outline" subscriptSizing="dynamic">
     <mat-label translate>mobile.mobile-package</mat-label>
     <input matInput required formControlName="pkgName">
@@ -36,6 +36,14 @@
     </mat-error>
     <mat-error *ngIf="entityForm.get('pkgName').hasError('pattern')">
       {{ 'mobile.mobile-package-pattern' | translate }}
+    </mat-error>
+  </mat-form-field>
+  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+    <mat-label translate>mobile.mobile-package-title</mat-label>
+    <input matInput formControlName="title">
+    <mat-hint></mat-hint>
+    <mat-error *ngIf="entityForm.get('title').hasError('maxlength')">
+      {{ 'mobile.mobile-package-title-max-length' | translate }}
     </mat-error>
   </mat-form-field>
   <mat-form-field appearance="outline" class="flex">

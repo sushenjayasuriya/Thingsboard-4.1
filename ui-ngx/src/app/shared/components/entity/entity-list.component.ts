@@ -1,5 +1,5 @@
 ///
-/// Copyright © 2016-2025 The Thingsboard Authors
+/// Copyright © 2016-2026 The Thingsboard Authors
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -14,7 +14,18 @@
 /// limitations under the License.
 ///
 
-import { Component, ElementRef, forwardRef, Input, OnChanges, OnInit, SimpleChanges, ViewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  EventEmitter,
+  forwardRef,
+  Input,
+  OnChanges,
+  OnInit,
+  Output,
+  SimpleChanges,
+  ViewChild
+} from '@angular/core';
 import {
   ControlValueAccessor,
   NG_VALIDATORS,
@@ -39,21 +50,22 @@ import { coerceBoolean } from '@shared/decorators/coercion';
 import { isArray } from 'lodash';
 
 @Component({
-  selector: 'tb-entity-list',
-  templateUrl: './entity-list.component.html',
-  styleUrls: [],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => EntityListComponent),
-      multi: true
-    },
-    {
-      provide: NG_VALIDATORS,
-      useExisting: forwardRef(() => EntityListComponent),
-      multi: true
-    }
-  ]
+    selector: 'tb-entity-list',
+    templateUrl: './entity-list.component.html',
+    styleUrls: [],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => EntityListComponent),
+            multi: true
+        },
+        {
+            provide: NG_VALIDATORS,
+            useExisting: forwardRef(() => EntityListComponent),
+            multi: true
+        }
+    ],
+    standalone: false
 })
 export class EntityListComponent implements ControlValueAccessor, OnInit, OnChanges {
 
@@ -93,6 +105,7 @@ export class EntityListComponent implements ControlValueAccessor, OnInit, OnChan
   }
 
   @Input()
+  @coerceBoolean()
   disabled: boolean;
 
   @Input()
@@ -108,6 +121,13 @@ export class EntityListComponent implements ControlValueAccessor, OnInit, OnChan
   @Input()
   @coerceBoolean()
   inlineField: boolean;
+
+  @Input()
+  @coerceBoolean()
+  allowCreateNew: boolean;
+
+  @Output()
+  createNew = new EventEmitter<string>();
 
   @ViewChild('entityInput') entityInput: ElementRef<HTMLInputElement>;
   @ViewChild('entityAutocomplete') matAutocomplete: MatAutocomplete;
@@ -134,6 +154,11 @@ export class EntityListComponent implements ControlValueAccessor, OnInit, OnChan
   private updateValidators() {
     this.entityListFormGroup.get('entities').setValidators(this.required ? [Validators.required] : []);
     this.entityListFormGroup.get('entities').updateValueAndValidity();
+  }
+
+  createNewEntity($event: Event, searchText?: string) {
+    $event.stopPropagation();
+    this.createNew.emit(searchText);
   }
 
   registerOnChange(fn: any): void {
@@ -185,22 +210,27 @@ export class EntityListComponent implements ControlValueAccessor, OnInit, OnChan
     this.searchText = '';
     if (value != null && value.length > 0) {
       this.modelValue = [...value];
-      this.entityService.getEntities(this.entityType, value).subscribe(
-        (entities) => {
-          this.entities = entities;
+      this.entityService.getEntities(this.entityType, value)
+        .subscribe(resolvedEntities => {
+          this.entities = resolvedEntities;
           this.entityListFormGroup.get('entities').setValue(this.entities);
-          if (this.syncIdsWithDB && this.modelValue.length !== entities.length) {
-            this.modelValue = entities.map(entity => entity.id.id);
+          if (this.syncIdsWithDB && this.modelValue.length !== this.entities.length) {
+            this.modelValue = this.entities.map(entity => entity.id.id);
+            if (!this.modelValue.length) {
+              this.modelValue = null;
+            }
             this.propagateChange(this.modelValue);
           }
-        }
-      );
+        });
     } else {
       this.entities = [];
       this.entityListFormGroup.get('entities').setValue(this.entities);
       this.modelValue = null;
     }
     this.dirty = true;
+    if (this.entityInput) {
+      this.entityInput.nativeElement.value = '';
+    }
   }
 
   validate(): ValidationErrors | null {

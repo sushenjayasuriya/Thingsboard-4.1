@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,7 +41,8 @@ import java.util.Map;
         @Type(name = "DEVICE", value = DeviceExportData.class),
         @Type(name = "RULE_CHAIN", value = RuleChainExportData.class),
         @Type(name = "WIDGET_TYPE", value = WidgetTypeExportData.class),
-        @Type(name = "WIDGETS_BUNDLE", value = WidgetsBundleExportData.class)
+        @Type(name = "WIDGETS_BUNDLE", value = WidgetsBundleExportData.class),
+        @Type(name = "OTA_PACKAGE", value = OtaPackageExportData.class)
 })
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Data

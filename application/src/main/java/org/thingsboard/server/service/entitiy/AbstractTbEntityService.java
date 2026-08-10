@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -97,7 +97,7 @@ public abstract class AbstractTbEntityService {
         return (I) EntityIdFactory.getByTypeAndUuid(entityType, ModelConstants.NULL_UUID);
     }
 
-    protected ListenableFuture<UUID> autoCommit(User user, EntityId entityId) throws Exception {
+    protected ListenableFuture<UUID> autoCommit(User user, EntityId entityId) {
         if (vcService != null) {
             return vcService.autoCommit(user, entityId);
         } else {
@@ -106,7 +106,7 @@ public abstract class AbstractTbEntityService {
         }
     }
 
-    protected ListenableFuture<UUID> autoCommit(User user, EntityType entityType, List<UUID> entityIds) throws Exception {
+    protected ListenableFuture<UUID> autoCommit(User user, EntityType entityType, List<UUID> entityIds) {
         if (vcService != null) {
             return vcService.autoCommit(user, entityType, entityIds);
         } else {

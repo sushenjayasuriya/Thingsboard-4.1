@@ -1,5 +1,5 @@
 ///
-/// Copyright © 2016-2025 The Thingsboard Authors
+/// Copyright © 2016-2026 The Thingsboard Authors
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ import { JwtSettings, SecuritySettings } from '@shared/models/settings.models';
 import { AdminService } from '@core/http/admin.service';
 import { HasConfirmForm } from '@core/guards/confirm-on-exit.guard';
 import { mergeMap, tap } from 'rxjs/operators';
-import { randomAlphanumeric } from '@core/utils';
+import { randomAlphanumeric, validateEmail } from '@core/utils';
 import { AuthService } from '@core/auth/auth.service';
 import { DialogService } from '@core/services/dialog.service';
 import { TranslateService } from '@ngx-translate/core';
@@ -40,9 +40,10 @@ import { Observable, of } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
-  selector: 'tb-security-settings',
-  templateUrl: './security-settings.component.html',
-  styleUrls: ['./security-settings.component.scss', './settings-card.scss']
+    selector: 'tb-security-settings',
+    templateUrl: './security-settings.component.html',
+    styleUrls: ['./security-settings.component.scss', './settings-card.scss'],
+    standalone: false
 })
 export class SecuritySettingsComponent extends PageComponent implements HasConfirmForm {
 
@@ -76,7 +77,7 @@ export class SecuritySettingsComponent extends PageComponent implements HasConfi
   buildSecuritySettingsForm() {
     this.securitySettingsFormGroup = this.fb.group({
       maxFailedLoginAttempts: [null, [Validators.min(0)]],
-      userLockoutNotificationEmail: ['', []],
+      userLockoutNotificationEmail: ['', [validateEmail]],
       userActivationTokenTtl: [24, [Validators.required, Validators.min(1), Validators.max(24)]],
       passwordResetTokenTtl: [24, [Validators.required, Validators.min(1), Validators.max(24)]],
       mobileSecretKeyLength: [null, [Validators.min(1)]],

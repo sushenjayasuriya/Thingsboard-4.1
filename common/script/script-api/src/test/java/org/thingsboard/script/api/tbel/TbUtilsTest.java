@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import org.mvel2.ParserContext;
 import org.mvel2.SandboxedParserConfiguration;
 import org.mvel2.execution.ExecutionArrayList;
 import org.mvel2.execution.ExecutionHashMap;
+import org.mvel2.execution.ExecutionLinkedHashSet;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -39,14 +40,18 @@ import java.util.Base64;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
 import static java.lang.Character.MAX_RADIX;
 import static java.lang.Character.MIN_RADIX;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Slf4j
@@ -148,6 +153,101 @@ public class TbUtilsTest {
         Assertions.assertEquals(expected, TbUtils.parseBytesToInt(data, 0, 3, true));
         data = toList(new byte[]{(byte) 0xCC, (byte) 0xBB, (byte) 0xAA});
         Assertions.assertEquals(expected, TbUtils.parseBytesToInt(data, 0, 3, false));
+    }
+
+    @Test
+    public void parseBytesToInt_doesNotChangeInputData() {
+        byte[] data = new byte[]{(byte) 0xAA, (byte) 0xBB, (byte) 0xCC, (byte) 0xDD};
+        byte[] copy = data.clone();
+        TbUtils.parseBytesToInt(data, 0, 4, true);
+        Assertions.assertArrayEquals(copy, data);
+        TbUtils.parseBytesToInt(data, 0, 4, false);
+        Assertions.assertArrayEquals(copy, data);
+
+        TbUtils.parseBytesToUnsignedInt(data, 0, 4, true);
+        Assertions.assertArrayEquals(copy, data);
+        TbUtils.parseBytesToUnsignedInt(data, 0, 4, false);
+        Assertions.assertArrayEquals(copy, data);
+
+        TbUtils.parseBytesToLong(data, 0, 4, true);
+        Assertions.assertArrayEquals(copy, data);
+        TbUtils.parseBytesToLong(data, 0, 4, false);
+        Assertions.assertArrayEquals(copy, data);
+
+        TbUtils.parseBytesToFloat(data, 0, 4, true);
+        Assertions.assertArrayEquals(copy, data);
+        TbUtils.parseBytesToFloat(data, 0, 4, false);
+        Assertions.assertArrayEquals(copy, data);
+
+        TbUtils.parseBytesIntToFloat(data, 0, 4, true);
+        Assertions.assertArrayEquals(copy, data);
+        TbUtils.parseBytesIntToFloat(data, 0, 4, false);
+        Assertions.assertArrayEquals(copy, data);
+
+        TbUtils.parseBytesToDouble(data, 0, 4, true);
+        Assertions.assertArrayEquals(copy, data);
+        TbUtils.parseBytesToDouble(data, 0, 4, false);
+        Assertions.assertArrayEquals(copy, data);
+
+        TbUtils.parseBytesLongToDouble(data, 0, 4, true);
+        Assertions.assertArrayEquals(copy, data);
+        TbUtils.parseBytesLongToDouble(data, 0, 4, false);
+        Assertions.assertArrayEquals(copy, data);
+
+        List<Byte> listData = toList(new byte[]{(byte) 0xAA, (byte) 0xBB, (byte) 0xCC, (byte) 0xDD});
+        List<Byte> listCopy = new ArrayList<>(listData);
+        TbUtils.parseBytesToInt(listData, 0, 4, true);
+        Assertions.assertEquals(listCopy, listData);
+        TbUtils.parseBytesToInt(listData, 0, 4, false);
+        Assertions.assertEquals(listCopy, listData);
+
+        TbUtils.parseBytesToUnsignedInt(listData, 0, 4, true);
+        Assertions.assertEquals(listCopy, listData);
+        TbUtils.parseBytesToUnsignedInt(listData, 0, 4, false);
+        Assertions.assertEquals(listCopy, listData);
+
+        TbUtils.parseBytesToLong(listData, 0, 4, true);
+        Assertions.assertEquals(listCopy, listData);
+        TbUtils.parseBytesToLong(listData, 0, 4, false);
+        Assertions.assertEquals(listCopy, listData);
+
+        TbUtils.parseBytesToFloat(listData, 0, 4, true);
+        Assertions.assertEquals(listCopy, listData);
+        TbUtils.parseBytesToFloat(listData, 0, 4, false);
+        Assertions.assertEquals(listCopy, listData);
+
+        TbUtils.parseBytesIntToFloat(listData, 0, 4, true);
+        Assertions.assertEquals(listCopy, listData);
+        TbUtils.parseBytesIntToFloat(listData, 0, 4, false);
+        Assertions.assertEquals(listCopy, listData);
+
+        TbUtils.parseBytesToDouble(listData, 0, 4, true);
+        Assertions.assertEquals(listCopy, listData);
+        TbUtils.parseBytesToDouble(listData, 0, 4, false);
+        Assertions.assertEquals(listCopy, listData);
+
+        TbUtils.parseBytesLongToDouble(listData, 0, 4, true);
+        Assertions.assertEquals(listCopy, listData);
+        TbUtils.parseBytesLongToDouble(listData, 0, 4, false);
+        Assertions.assertEquals(listCopy, listData);
+    }
+
+    @Test
+    public void compare_parseBytesToInt_and_parseBytesToUnsignedInt() {
+        byte[] data = new byte[]{(byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF};
+
+        // 4 bytes: parseBytesToInt returns -1, parseBytesToUnsignedInt returns 4294967295L
+        Assertions.assertEquals(-1, TbUtils.parseBytesToInt(data, 0, 4, true));
+        Assertions.assertEquals(4294967295L, TbUtils.parseBytesToUnsignedInt(data, 0, 4, true));
+
+        // 2 bytes (0xFFFF): both return 65535 (no sign extension for parseBytesToInt when length < 4)
+        Assertions.assertEquals(65535, TbUtils.parseBytesToInt(data, 0, 2, true));
+        Assertions.assertEquals(65535L, TbUtils.parseBytesToUnsignedInt(data, 0, 2, true));
+
+        // 2 bytes with high bit set (0x8000)
+        byte[] data2 = new byte[]{(byte) 0x80, (byte) 0x00};
+        Assertions.assertEquals(32768, TbUtils.parseBytesToInt(data2, 0, 2, true));
+        Assertions.assertEquals(32768L, TbUtils.parseBytesToUnsignedInt(data2, 0, 2, true));
     }
 
     @Test
@@ -1150,6 +1250,14 @@ public class TbUtilsTest {
     }
 
     @Test
+    public void toLong() {
+        Assertions.assertEquals(1729L, TbUtils.toLong(doubleVal));
+        Assertions.assertEquals(13L, TbUtils.toLong(12.8));
+        Assertions.assertEquals(28L, TbUtils.toLong(28.0));
+        Assertions.assertEquals(3_980_173_734L, TbUtils.toLong(3_980_173_734.0));
+    }
+
+    @Test
     public void isNaN() {
         assertFalse(TbUtils.isNaN(doubleVal));
         assertTrue(TbUtils.isNaN(Double.NaN));
@@ -1184,10 +1292,11 @@ public class TbUtilsTest {
 
     @Test
     public void isList() throws ExecutionException, InterruptedException {
-        List<Integer> liat = List.of(0x35);
-        assertTrue(TbUtils.isList(liat));
-        assertFalse(TbUtils.isMap(liat));
-        assertFalse(TbUtils.isArray(liat));
+        List<Integer> list = List.of(0x35);
+        assertTrue(TbUtils.isList(list));
+        assertFalse(TbUtils.isMap(list));
+        assertFalse(TbUtils.isArray(list));
+        assertFalse(TbUtils.isSet(list));
     }
 
     @Test
@@ -1195,10 +1304,64 @@ public class TbUtilsTest {
         byte [] array = new byte[]{1, 2, 3};
         assertTrue(TbUtils.isArray(array));
         assertFalse(TbUtils.isList(array));
+        assertFalse(TbUtils.isSet(array));
+    }
+
+    @Test
+    public void isSet() throws ExecutionException, InterruptedException {
+        Set<Byte> set = toSet(new byte[]{(byte) 0xDD, (byte) 0xCC, (byte) 0xBB, (byte) 0xAA});
+        assertTrue(TbUtils.isSet(set));
+        assertFalse(TbUtils.isList(set));
+        assertFalse(TbUtils.isArray(set));
+    }
+    @Test
+    public void setTest() throws ExecutionException, InterruptedException {
+        Set actual = TbUtils.newSet(ctx);
+        Set expected = toSet(new byte[]{(byte) 0xDD, (byte) 0xCC, (byte) 0xCC});
+        actual.add((byte) 0xDD);
+        actual.add((byte) 0xCC);
+        actual.add((byte) 0xCC);
+        assertTrue(expected.containsAll(actual));
+        List list = toList(new byte[]{(byte) 0xDD, (byte) 0xCC, (byte) 0xBB, (byte) 0xAA});
+        actual.addAll(list);
+        assertEquals(4, actual.size());
+        assertTrue(actual.containsAll(expected));
+        actual = TbUtils.toSet(ctx, list);
+        expected = toSet(new byte[]{(byte) 0xDD, (byte) 0xCC, (byte) 0xDA});
+        actual.add((byte) 0xDA);
+        actual.remove((byte) 0xBB);
+        actual.remove((byte) 0xAA);
+        assertTrue(expected.containsAll(actual));
+        assertEquals(actual.size(), 3);
+        actual.clear();
+        assertTrue(actual.isEmpty());
+        actual = TbUtils.toSet(ctx, list);
+        Set actualClone = TbUtils.toSet(ctx, list);
+        Set actualClone_asc = TbUtils.toSet(ctx, list);
+        Set actualClone_desc = TbUtils.toSet(ctx, list);
+        ((ExecutionLinkedHashSet<?>)actualClone).sort();
+        ((ExecutionLinkedHashSet<?>)actualClone_asc).sort(true);
+        ((ExecutionLinkedHashSet<?>)actualClone_desc).sort(false);
+        assertEquals(list.toString(), actual.toString());
+        assertNotEquals(list.toString(), actualClone.toString());
+        Collections.sort(list);
+        assertEquals(list.toString(), actualClone.toString());
+        assertEquals(list.toString(), actualClone_asc.toString());
+        Collections.sort(list, Collections.reverseOrder());
+        assertNotEquals(list.toString(), actualClone_asc.toString());
+        assertEquals(list.toString(), actualClone_desc.toString());
     }
 
     private static List<Byte> toList(byte[] data) {
         List<Byte> result = new ArrayList<>(data.length);
+        for (Byte b : data) {
+            result.add(b);
+        }
+        return result;
+    }
+
+    private static Set<Byte> toSet(byte[] data) {
+        Set<Byte> result = new LinkedHashSet<>();
         for (Byte b : data) {
             result.add(b);
         }

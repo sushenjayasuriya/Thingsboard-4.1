@@ -1,5 +1,5 @@
 ///
-/// Copyright © 2016-2025 The Thingsboard Authors
+/// Copyright © 2016-2026 The Thingsboard Authors
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -51,9 +51,10 @@ interface SwitchSettings {
 }
 
 @Component({
-  selector: 'tb-switch',
-  templateUrl: './switch.component.html',
-  styleUrls: ['./switch.component.scss']
+    selector: 'tb-switch',
+    templateUrl: './switch.component.html',
+    styleUrls: ['./switch.component.scss'],
+    standalone: false
 })
 export class SwitchComponent extends PageComponent implements AfterViewInit, OnDestroy {
 
@@ -373,11 +374,16 @@ export class SwitchComponent extends PageComponent implements AfterViewInit, OnD
       if (keyData && keyData.data && keyData.data[0]) {
         const attrValue = keyData.data[0][1];
         if (isDefined(attrValue)) {
-          let parsed = null;
+          let valueToParse = attrValue;
           try {
-            parsed = this.parseValueFunction(JSON.parse(attrValue));
-          } catch (e){/**/}
-          value = !!parsed;
+            valueToParse = JSON.parse(attrValue);
+          } catch (e) {/**/}
+
+          try {
+            value = !!this.parseValueFunction(valueToParse);
+          } catch (e) {
+            value = false;
+          }
         }
       }
     }

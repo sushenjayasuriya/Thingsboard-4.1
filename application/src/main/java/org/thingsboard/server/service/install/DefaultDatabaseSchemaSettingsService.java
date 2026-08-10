@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,22 +17,23 @@ package org.thingsboard.server.service.install;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.thingsboard.server.service.install.lts.LtsVersion;
 import org.thingsboard.server.service.install.update.DefaultDataUpdateService;
 
-import java.util.List;
+import java.util.Map;
 
 @Service
-@Profile("install")
 @Slf4j
 @RequiredArgsConstructor
 public class DefaultDatabaseSchemaSettingsService implements DatabaseSchemaSettingsService {
 
-    // This list should include all versions which are compatible for the upgrade.
-    // The compatibility cycle usually breaks when we have some scripts written in Java that may not work after new release.
-    private static final List<String> SUPPORTED_VERSIONS_FOR_UPGRADE = List.of("4.0.0", "4.0.1", "4.0.2");
+    // map of versions from which the upgrade to the current version is possible
+    // key - supported version prefix, value - display name
+    private static final Map<String, String> SUPPORTED_VERSIONS_FOR_UPGRADE = Map.of(
+            "4.2.0", "4.2.0"
+    );
 
     private final ProjectInfo projectInfo;
     private final JdbcTemplate jdbcTemplate;
@@ -57,9 +58,9 @@ public class DefaultDatabaseSchemaSettingsService implements DatabaseSchemaSetti
             onSchemaSettingsError("Upgrade failed: database already upgraded to current version. You can set SKIP_SCHEMA_VERSION_CHECK to 'true' if force re-upgrade needed.");
         }
 
-        if (!SUPPORTED_VERSIONS_FOR_UPGRADE.contains(dbSchemaVersion)) {
+        if (SUPPORTED_VERSIONS_FOR_UPGRADE.keySet().stream().noneMatch(dbSchemaVersion::startsWith)) {
             onSchemaSettingsError(String.format("Upgrade failed: database version '%s' is not supported for upgrade. Supported versions are: %s.",
-                    dbSchemaVersion, SUPPORTED_VERSIONS_FOR_UPGRADE
+                    dbSchemaVersion, SUPPORTED_VERSIONS_FOR_UPGRADE.values()
             ));
         }
     }
@@ -74,13 +75,18 @@ public class DefaultDatabaseSchemaSettingsService implements DatabaseSchemaSetti
 
     @Override
     public void updateSchemaVersion() {
-        jdbcTemplate.execute("UPDATE tb_schema_settings SET schema_version = " + getPackageSchemaVersionForDb());
+        updateSchemaVersion(getPackageSchemaVersion());
+    }
+
+    @Override
+    public void updateSchemaVersion(String version) {
+        jdbcTemplate.execute("UPDATE tb_schema_settings SET schema_version = " + toDbVersion(version));
     }
 
     @Override
     public String getPackageSchemaVersion() {
         if (packageSchemaVersion == null) {
-            packageSchemaVersion = projectInfo.getProjectVersion();
+            packageSchemaVersion = normalizeVersion(projectInfo.getProjectVersion());
         }
         return packageSchemaVersion;
     }
@@ -88,17 +94,28 @@ public class DefaultDatabaseSchemaSettingsService implements DatabaseSchemaSetti
     @Override
     public String getDbSchemaVersion() {
         if (schemaVersionFromDb == null) {
-            Long version = getSchemaVersionFromDb();
-            if (version == null) {
+            Long dbVersion = getSchemaVersionFromDb();
+            if (dbVersion == null) {
                 onSchemaSettingsError("Upgrade failed: the database schema version is missing.");
             }
 
             @SuppressWarnings("DataFlowIssue")
-            long major = version / 1000000;
-            long minor = (version % 1000000) / 1000;
-            long patch = version % 1000;
+            long version = dbVersion;
 
-            schemaVersionFromDb = major + "." + minor + "." + patch;
+            if (version < 1_000_000_000) {
+                // Old format: MMM mmm ppp (e.g., 4002001 = 4.2.1)
+                long major = version / 1_000_000;
+                long minor = (version % 1_000_000) / 1000;
+                long maintenance = version % 1000;
+                schemaVersionFromDb = major + "." + minor + "." + maintenance + ".0";
+            } else {
+                // New format: MMM mmm mmm ppp (e.g., 4002001001 = 4.2.1.1)
+                long major = version / 1_000_000_000;
+                long minor = (version % 1_000_000_000) / 1_000_000;
+                long maintenance = (version % 1_000_000) / 1000;
+                long patch = version % 1000;
+                schemaVersionFromDb = major + "." + minor + "." + maintenance + "." + patch;
+            }
         }
         return schemaVersionFromDb;
     }
@@ -112,17 +129,21 @@ public class DefaultDatabaseSchemaSettingsService implements DatabaseSchemaSetti
     }
 
     private long getPackageSchemaVersionForDb() {
-        String[] versionParts = getPackageSchemaVersion().split("\\.");
+        return toDbVersion(getPackageSchemaVersion());
+    }
 
-        long major = Integer.parseInt(versionParts[0]);
-        long minor = Integer.parseInt(versionParts[1]);
-        long patch = versionParts.length > 2 ? Integer.parseInt(versionParts[2]) : 0;
-
-        return major * 1000000 + minor * 1000 + patch;
+    private long toDbVersion(String version) {
+        LtsVersion v = LtsVersion.parse(version);
+        return v.major() * 1_000_000_000L + v.minor() * 1_000_000L + v.maintenance() * 1000L + v.patch();
     }
 
     private void onSchemaSettingsError(String message) {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> log.error(message)));
         throw new RuntimeException(message);
     }
+
+    private String normalizeVersion(String version) {
+        return LtsVersion.parse(version).toString();
+    }
+
 }

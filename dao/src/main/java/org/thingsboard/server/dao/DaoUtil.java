@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
  */
 package org.thingsboard.server.dao;
 
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -43,10 +44,9 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public abstract class DaoUtil {
+public final class DaoUtil {
 
-    private DaoUtil() {
-    }
+    private DaoUtil() {}
 
     public static <T> PageData<T> toPageData(Page<? extends ToData<T>> page) {
         List<T> data = convertDataList(page.getContent());
@@ -98,17 +98,17 @@ public abstract class DaoUtil {
         return PageRequest.of(pageLink.getPage(), pageLink.getPageSize(), pageLink.toSort(sortOrders, columnMap, addDefaultSorting));
     }
 
-    public static <T> List<T> convertDataList(Collection<? extends ToData<T>> toDataList) {
-        List<T> list = Collections.emptyList();
-        if (toDataList != null && !toDataList.isEmpty()) {
-            list = new ArrayList<>();
-            for (ToData<T> object : toDataList) {
-                if (object != null) {
-                    list.add(object.toData());
-                }
+    public static <T> List<T> convertDataList(Collection<? extends ToData<T>> toConvert) {
+        if (CollectionUtils.isEmpty(toConvert)) {
+            return Collections.emptyList();
+        }
+        List<T> converted = new ArrayList<>(toConvert.size());
+        for (ToData<T> object : toConvert) {
+            if (object != null) {
+                converted.add(object.toData());
             }
         }
-        return list;
+        return converted;
     }
 
     public static <T> T getData(ToData<T> data) {
@@ -201,6 +201,15 @@ public abstract class DaoUtil {
                 .map(info -> new EntitySubtype(tenantId, entityType, info.getName()))
                 .sorted(Comparator.comparing(EntitySubtype::getType))
                 .collect(Collectors.toList());
+    }
+
+    public static ConstraintViolationException extractConstraintViolation(Throwable t) {
+        if (t instanceof ConstraintViolationException cve) {
+            return cve;
+        } else if (t != null && t.getCause() instanceof ConstraintViolationException cve) {
+            return cve;
+        }
+        return null;
     }
 
 }

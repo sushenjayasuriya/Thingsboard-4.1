@@ -1,5 +1,5 @@
 ///
-/// Copyright © 2016-2025 The Thingsboard Authors
+/// Copyright © 2016-2026 The Thingsboard Authors
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -58,9 +58,10 @@ export interface TimewindowConfigDialogData {
 }
 
 @Component({
-  selector: 'tb-timewindow-config-dialog',
-  templateUrl: './timewindow-config-dialog.component.html',
-  styleUrls: ['./timewindow-config-dialog.component.scss', './timewindow-form.scss']
+    selector: 'tb-timewindow-config-dialog',
+    templateUrl: './timewindow-config-dialog.component.html',
+    styleUrls: ['./timewindow-config-dialog.component.scss', './timewindow-form.scss'],
+    standalone: false
 })
 export class TimewindowConfigDialogComponent extends PageComponent implements OnInit, OnDestroy {
 
@@ -411,9 +412,10 @@ export class TimewindowConfigDialogComponent extends PageComponent implements On
     const timewindowFormValue = this.timewindowForm.getRawValue();
     const realtimeDisableCustomInterval = timewindowFormValue.realtime.disableCustomInterval;
     const historyDisableCustomInterval = timewindowFormValue.history.disableCustomInterval;
-    updateFormValuesOnTimewindowTypeChange(selectedTab, this.quickIntervalOnly, this.timewindowForm,
+    updateFormValuesOnTimewindowTypeChange(selectedTab, this.timewindowForm,
       realtimeDisableCustomInterval, historyDisableCustomInterval,
-      timewindowFormValue.realtime.advancedParams, timewindowFormValue.history.advancedParams);
+      timewindowFormValue.realtime.advancedParams, timewindowFormValue.history.advancedParams,
+      this.realtimeTimewindowOptions, this.historyTimewindowOptions);
     this.timewindowForm.patchValue({
       hideAggregation: timewindowFormValue.hideAggregation,
       hideAggInterval: timewindowFormValue.hideAggInterval,

@@ -1,5 +1,5 @@
 ///
-/// Copyright © 2016-2025 The Thingsboard Authors
+/// Copyright © 2016-2026 The Thingsboard Authors
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -94,6 +94,7 @@ import {
   SelectMapEntityPanelComponent
 } from '@home/components/widget/lib/maps/panels/select-map-entity-panel.component';
 import { MapTimelinePanelComponent } from '@home/components/widget/lib/maps/panels/map-timeline-panel.component';
+import { HtmlContainerWidgetComponent } from '@home/components/widget/lib/html/html-container-widget.component';
 
 @NgModule({
   declarations: [
@@ -151,7 +152,8 @@ import { MapTimelinePanelComponent } from '@home/components/widget/lib/maps/pane
     ScadaSymbolWidgetComponent,
     SelectMapEntityPanelComponent,
     MapTimelinePanelComponent,
-    MapWidgetComponent
+    MapWidgetComponent,
+    HtmlContainerWidgetComponent
   ],
   imports: [
     CommonModule,
@@ -214,7 +216,8 @@ import { MapTimelinePanelComponent } from '@home/components/widget/lib/maps/pane
     UnreadNotificationWidgetComponent,
     NotificationTypeFilterPanelComponent,
     ScadaSymbolWidgetComponent,
-    MapWidgetComponent
+    MapWidgetComponent,
+    HtmlContainerWidgetComponent
   ],
   providers: [
     {provide: WIDGET_COMPONENTS_MODULE_TOKEN, useValue: WidgetComponentsModule},

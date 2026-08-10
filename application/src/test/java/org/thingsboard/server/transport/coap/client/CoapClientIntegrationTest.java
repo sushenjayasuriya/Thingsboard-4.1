@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.thingsboard.common.util.JacksonUtil;
 import org.thingsboard.server.common.data.id.DeviceId;
+import org.thingsboard.server.common.data.query.AliasEntityId;
 import org.thingsboard.server.common.data.query.EntityKey;
 import org.thingsboard.server.common.data.query.EntityKeyType;
 import org.thingsboard.server.common.data.query.SingleEntityFilter;
@@ -161,7 +162,7 @@ public class CoapClientIntegrationTest extends AbstractCoapIntegrationTest {
     protected void processTestRequestAttributesValuesFromTheServer(boolean confirmable) throws Exception {
         client = createClientForFeatureWithConfirmableParameter(FeatureType.ATTRIBUTES, confirmable);
         SingleEntityFilter dtf = new SingleEntityFilter();
-        dtf.setSingleEntity(savedDevice.getId());
+        dtf.setSingleEntity(AliasEntityId.fromEntityId(savedDevice.getId()));
         List<EntityKey> csKeys = getEntityKeys(CLIENT_ATTRIBUTE);
         List<EntityKey> shKeys = getEntityKeys(SHARED_ATTRIBUTE);
         List<EntityKey> keys = new ArrayList<>();

@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.thingsboard.server.common.data.EntityType;
 import org.thingsboard.server.common.data.OtaPackage;
+import org.thingsboard.server.common.data.id.OtaPackageId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.page.PageLink;
@@ -43,6 +44,55 @@ public class JpaOtaPackageDao extends JpaAbstractDao<OtaPackageEntity, OtaPackag
     private OtaPackageRepository otaPackageRepository;
 
     @Override
+    public Long sumDataSizeByTenantId(TenantId tenantId) {
+        return otaPackageRepository.sumDataSizeByTenantId(tenantId.getId());
+    }
+
+    @Transactional
+    @Override
+    public OtaPackage findOtaPackageByTenantIdAndTitleAndVersion(TenantId tenantId, String title, String version) {
+        return DaoUtil.getData(otaPackageRepository.findByTenantIdAndTitleAndVersion(tenantId.getId(), title, version));
+    }
+
+    @Transactional
+    @Override
+    public PageData<OtaPackage> findAllByTenantId(TenantId tenantId, PageLink pageLink) {
+        return DaoUtil.toPageData(otaPackageRepository.findByTenantId(tenantId.getId(), DaoUtil.toPageable(pageLink)));
+    }
+
+    @Transactional
+    @Override
+    public PageData<OtaPackage> findByTenantId(UUID tenantId, PageLink pageLink) {
+        return findAllByTenantId(TenantId.fromUUID(tenantId), pageLink);
+    }
+
+    @Override
+    public PageData<OtaPackageId> findIdsByTenantId(UUID tenantId, PageLink pageLink) {
+        return DaoUtil.pageToPageData(otaPackageRepository.findIdsByTenantId(tenantId, DaoUtil.toPageable(pageLink)).map(OtaPackageId::new));
+    }
+
+    @Transactional
+    @Override
+    public OtaPackage findByTenantIdAndExternalId(UUID tenantId, UUID externalId) {
+        return DaoUtil.getData(otaPackageRepository.findByTenantIdAndExternalId(tenantId, externalId));
+    }
+
+    @Override
+    public Long getDataOidById(UUID id) {
+        return otaPackageRepository.getDataOidById(id);
+    }
+
+    @Override
+    public Integer unlinkLargeObject(Long dataOid) {
+        return otaPackageRepository.unlinkLargeObject(dataOid);
+    }
+
+    @Override
+    public OtaPackageId getExternalIdByInternal(OtaPackageId internalId) {
+        return DaoUtil.toEntityId(otaPackageRepository.getExternalIdById(internalId.getId()), OtaPackageId::new);
+    }
+
+    @Override
     protected Class<OtaPackageEntity> getEntityClass() {
         return OtaPackageEntity.class;
     }
@@ -50,17 +100,6 @@ public class JpaOtaPackageDao extends JpaAbstractDao<OtaPackageEntity, OtaPackag
     @Override
     protected JpaRepository<OtaPackageEntity, UUID> getRepository() {
         return otaPackageRepository;
-    }
-
-    @Override
-    public Long sumDataSizeByTenantId(TenantId tenantId) {
-        return otaPackageRepository.sumDataSizeByTenantId(tenantId.getId());
-    }
-
-    @Transactional
-    @Override
-    public PageData<OtaPackage> findAllByTenantId(TenantId tenantId, PageLink pageLink) {
-        return DaoUtil.toPageData(otaPackageRepository.findByTenantId(tenantId.getId(), DaoUtil.toPageable(pageLink)));
     }
 
     @Override

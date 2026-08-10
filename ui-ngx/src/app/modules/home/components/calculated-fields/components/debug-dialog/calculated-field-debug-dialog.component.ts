@@ -1,5 +1,5 @@
 ///
-/// Copyright © 2016-2025 The Thingsboard Authors
+/// Copyright © 2016-2026 The Thingsboard Authors
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -35,9 +35,10 @@ export interface CalculatedFieldDebugDialogData {
 }
 
 @Component({
-  selector: 'tb-calculated-field-debug-dialog',
-  styleUrls: ['calculated-field-debug-dialog.component.scss'],
-  templateUrl: './calculated-field-debug-dialog.component.html',
+    selector: 'tb-calculated-field-debug-dialog',
+    styleUrls: ['calculated-field-debug-dialog.component.scss'],
+    templateUrl: './calculated-field-debug-dialog.component.html',
+    standalone: false
 })
 export class CalculatedFieldDebugDialogComponent extends DialogComponent<CalculatedFieldDebugDialogComponent, string> implements AfterViewInit {
 

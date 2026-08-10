@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -403,6 +403,23 @@ public class RuleChainControllerTest extends AbstractControllerTest {
         RuleChain ruleChain = new RuleChain();
         ruleChain.setName(name);
         return doPost("/api/ruleChain", ruleChain, RuleChain.class);
+    }
+
+    @Test
+    public void testScriptForbiddenForCustomer() throws Exception {
+        loginCustomerUser();
+
+        doPost("/api/ruleChain/testScript", (Object) """
+                {
+                  "script": "return msg;",
+                  "scriptType": "update",
+                  "argNames": ["msg", "metadata", "msgType"],
+                  "msg": "{}",
+                  "metadata": {},
+                  "msgType": "POST_TELEMETRY_REQUEST"
+                }
+                """)
+                .andExpect(status().isForbidden());
     }
 
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,8 +38,6 @@ import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.http.HttpHeaders;
@@ -53,6 +51,8 @@ import org.springframework.mock.http.MockHttpInputMessage;
 import org.springframework.mock.http.MockHttpOutputMessage;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.mock.web.MockPart;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -60,6 +60,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.ResultMatcher;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.context.WebApplicationContext;
@@ -79,6 +80,7 @@ import org.thingsboard.server.common.data.Device;
 import org.thingsboard.server.common.data.DeviceProfile;
 import org.thingsboard.server.common.data.DeviceProfileType;
 import org.thingsboard.server.common.data.DeviceTransportType;
+import org.thingsboard.server.common.data.EventInfo;
 import org.thingsboard.server.common.data.SaveDeviceWithCredentialsRequest;
 import org.thingsboard.server.common.data.StringUtils;
 import org.thingsboard.server.common.data.TbResourceInfo;
@@ -98,6 +100,7 @@ import org.thingsboard.server.common.data.device.profile.MqttTopics;
 import org.thingsboard.server.common.data.device.profile.ProtoTransportPayloadConfiguration;
 import org.thingsboard.server.common.data.device.profile.TransportPayloadTypeConfiguration;
 import org.thingsboard.server.common.data.edge.Edge;
+import org.thingsboard.server.common.data.event.EventType;
 import org.thingsboard.server.common.data.exception.ThingsboardException;
 import org.thingsboard.server.common.data.id.CustomerId;
 import org.thingsboard.server.common.data.id.DeviceId;
@@ -154,6 +157,7 @@ import org.thingsboard.server.service.entitiy.tenant.profile.TbTenantProfileServ
 import org.thingsboard.server.service.security.auth.jwt.RefreshTokenRequest;
 import org.thingsboard.server.service.security.auth.rest.LoginRequest;
 import org.thingsboard.server.service.security.model.token.JwtTokenFactory;
+import org.thingsboard.server.service.system.SystemPatchApplier;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -206,6 +210,7 @@ public abstract class AbstractWebTest extends AbstractInMemoryStorageTest {
     private static final String DIFFERENT_TENANT_ADMIN_PASSWORD = "difftenant";
 
     protected static final String CUSTOMER_USER_EMAIL = "testcustomer@thingsboard.org";
+    protected static final String SECOND_CUSTOMER_USER_EMAIL = "testsecondcustomer@thingsboard.org";
     private static final String CUSTOMER_USER_PASSWORD = "customer";
 
     protected static final String DIFFERENT_CUSTOMER_USER_EMAIL = "testdifferentcustomer@thingsboard.org";
@@ -243,6 +248,7 @@ public abstract class AbstractWebTest extends AbstractInMemoryStorageTest {
 
     protected CustomerId differentTenantCustomerId;
     protected UserId customerUserId;
+    protected UserId secondCustomerUserId;
     protected UserId differentCustomerUserId;
 
     protected UserId differentTenantCustomerUserId;
@@ -278,17 +284,20 @@ public abstract class AbstractWebTest extends AbstractInMemoryStorageTest {
     @Autowired
     private JwtTokenFactory jwtTokenFactory;
 
-    @SpyBean
-    protected MailService mailService;
-
     @Autowired
     protected InMemoryStorage storage;
 
     @Autowired
     protected JdbcTemplate jdbcTemplate;
 
-    @MockBean
+    @MockitoSpyBean
+    protected MailService mailService;
+
+    @MockitoBean
     protected CfRocksDb cfRocksDb;
+
+    @MockitoBean
+    protected SystemPatchApplier systemPatchApplier;
 
     @Rule
     public TestRule watcher = new TestWatcher() {
@@ -326,7 +335,14 @@ public abstract class AbstractWebTest extends AbstractInMemoryStorageTest {
 
         if (this.mockMvc == null) {
             this.mockMvc = webAppContextSetup(webApplicationContext)
-                    .apply(springSecurity()).build();
+                    .apply(springSecurity())
+                    // conditional printing of non 2xx responses
+                    .alwaysDo(result -> {
+                        if (result.getResponse().getStatus() >= 400) {
+                            MockMvcResultHandlers.log().handle(result);
+                        }
+                    })
+                    .build();
         }
         loginSysAdmin();
 
@@ -358,8 +374,16 @@ public abstract class AbstractWebTest extends AbstractInMemoryStorageTest {
         customerUser.setCustomerId(savedCustomer.getId());
         customerUser.setEmail(CUSTOMER_USER_EMAIL);
 
-        customerUser = createUserAndLogin(customerUser, CUSTOMER_USER_PASSWORD);
+        customerUser = createUserAndActivate(customerUser, CUSTOMER_USER_PASSWORD);
         customerUserId = customerUser.getId();
+
+        User secondCustomerUser = new User();
+        secondCustomerUser.setAuthority(Authority.CUSTOMER_USER);
+        secondCustomerUser.setTenantId(tenantId);
+        secondCustomerUser.setCustomerId(customerId);
+        secondCustomerUser.setEmail(SECOND_CUSTOMER_USER_EMAIL);
+        secondCustomerUser = createUserAndActivate(secondCustomerUser, CUSTOMER_USER_PASSWORD);
+        secondCustomerUserId = secondCustomerUser.getId();
 
         resetTokens();
 
@@ -391,6 +415,10 @@ public abstract class AbstractWebTest extends AbstractInMemoryStorageTest {
     public void teardownWebTest() throws Exception {
         log.debug("Executing web test teardown");
 
+        // Drain any pending housekeeper work left by the test body (e.g., bulk tenant deletes)
+        // before proceeding with teardown deletions, to avoid 90s per-tenant wait timing out.
+        awaitHousekeeperDrained();
+
         loginSysAdmin();
         deleteTenant(tenantId);
         deleteDifferentTenant();
@@ -400,7 +428,7 @@ public abstract class AbstractWebTest extends AbstractInMemoryStorageTest {
 
         jdbcTemplate.execute("TRUNCATE TABLE notification");
 
-        log.info("Executed web test teardown");
+        log.debug("Executed web test teardown");
     }
 
     private void verifyNoTenantsLeft() throws Exception {
@@ -419,6 +447,11 @@ public abstract class AbstractWebTest extends AbstractInMemoryStorageTest {
             throw new RuntimeException(e);
         }
         Awaitility.await("all tasks processed").atMost(90, TimeUnit.SECONDS).during(300, TimeUnit.MILLISECONDS)
+                .until(() -> storage.getLag("tb_housekeeper") == 0);
+    }
+
+    protected void awaitHousekeeperDrained() {
+        Awaitility.await("housekeeper drained").atMost(5, TimeUnit.MINUTES).during(300, TimeUnit.MILLISECONDS)
                 .until(() -> storage.getLag("tb_housekeeper") == 0);
     }
 
@@ -447,6 +480,10 @@ public abstract class AbstractWebTest extends AbstractInMemoryStorageTest {
 
     protected void loginCustomerUser() throws Exception {
         login(CUSTOMER_USER_EMAIL, CUSTOMER_USER_PASSWORD);
+    }
+
+    protected void loginSecondCustomerUser() throws Exception {
+        login(SECOND_CUSTOMER_USER_EMAIL, CUSTOMER_USER_PASSWORD);
     }
 
     protected void loginUser(String userName, String password) throws Exception {
@@ -560,6 +597,13 @@ public abstract class AbstractWebTest extends AbstractInMemoryStorageTest {
         JsonNode activateRequest = getActivateRequest(password);
         JsonNode tokenInfo = readResponse(doPost("/api/noauth/activate", activateRequest).andExpect(status().isOk()), JsonNode.class);
         validateAndSetJwtToken(tokenInfo, user.getEmail());
+        return savedUser;
+    }
+
+    protected User createUserAndActivate(User user, String password) throws Exception {
+        User savedUser = doPost("/api/user", user, User.class);
+        JsonNode activateRequest = getActivateRequest(password);
+        doPost("/api/noauth/activate", activateRequest).andExpect(status().isOk());
         return savedUser;
     }
 
@@ -1038,7 +1082,7 @@ public abstract class AbstractWebTest extends AbstractInMemoryStorageTest {
             assertThat(findRelationsByTo(entityTo)).hasSize(1);
 
             doDelete(urlDelete)
-                    .andExpect(status().isInternalServerError());
+                    .andExpect(status().isBadRequest());
 
             assertThat(findRelationsByTo(entityTo)).hasSize(1);
         } finally {
@@ -1274,7 +1318,7 @@ public abstract class AbstractWebTest extends AbstractInMemoryStorageTest {
 
     protected List<Job> findJobs(List<JobType> types, List<UUID> entities) throws Exception {
         return doGetTypedWithPageLink("/api/jobs?types=" + types.stream().map(Enum::name).collect(Collectors.joining(",")) +
-                                      "&entities=" + entities.stream().map(UUID::toString).collect(Collectors.joining(",")) + "&",
+                        "&entities=" + entities.stream().map(UUID::toString).collect(Collectors.joining(",")) + "&",
                 new TypeReference<PageData<Job>>() {}, new PageLink(100, 0, null, new SortOrder("createdTime", SortOrder.Direction.DESC))).getData();
     }
 
@@ -1284,6 +1328,17 @@ public abstract class AbstractWebTest extends AbstractInMemoryStorageTest {
 
     protected void reprocessJob(JobId jobId) throws Exception {
         doPost("/api/job/" + jobId + "/reprocess").andExpect(status().isOk());
+    }
+
+    protected PageData<EventInfo> getDebugEvents(TenantId tenantId, EntityId entityId, int limit) throws Exception {
+        return getEvents(tenantId, entityId, EventType.DEBUG_RULE_NODE, limit);
+    }
+
+    protected PageData<EventInfo> getEvents(TenantId tenantId, EntityId entityId, EventType eventType, int limit) throws Exception {
+        TimePageLink pageLink = new TimePageLink(limit);
+        return doGetTypedWithTimePageLink("/api/events/{entityType}/{entityId}/{eventType}?tenantId={tenantId}&",
+                new TypeReference<PageData<EventInfo>>() {
+                }, pageLink, entityId.getEntityType(), entityId.getId(), eventType, tenantId.getId());
     }
 
 }

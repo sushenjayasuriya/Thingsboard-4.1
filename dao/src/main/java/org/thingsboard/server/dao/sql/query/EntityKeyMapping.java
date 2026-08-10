@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -494,8 +494,8 @@ public class EntityKeyMapping {
             String attrNumAlias = getSortOrderNumAlias();
             String attrVarcharAlias = getSortOrderStrAlias();
             String attrSortOrderSelection =
-                    String.format("coalesce(%s.dbl_v, cast(%s.long_v as double precision), (case when %s.bool_v then 1 else 0 end)) %s," +
-                            "coalesce(%s.str_v, cast(%s.json_v as varchar), '') %s", alias, alias, alias, attrNumAlias, alias, alias, attrVarcharAlias);
+                    String.format("coalesce(%s.dbl_v, cast(%s.long_v as double precision), (case when %s.bool_v is null then null when %s.bool_v then 1 else 0 end)) %s," +
+                            "coalesce(%s.str_v, cast(%s.json_v as varchar), '') %s", alias, alias, alias, alias, attrNumAlias, alias, alias, attrVarcharAlias);
             return String.join(", ", attrValSelection, attrTsSelection, attrSortOrderSelection);
         } else {
             return String.join(", ", attrValSelection, attrTsSelection);

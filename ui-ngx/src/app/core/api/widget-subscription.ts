@@ -1,5 +1,5 @@
 ///
-/// Copyright © 2016-2025 The Thingsboard Authors
+/// Copyright © 2016-2026 The Thingsboard Authors
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -871,7 +871,8 @@ export class WidgetSubscription implements IWidgetSubscription {
                 return timer(initialTimeout, pollingInterval).pipe(
                   switchMap(() => this.ctx.deviceService.getPersistedRpc(response.rpcId, true)),
                   filter(persistentRespons =>
-                    persistentRespons.status !== RpcStatus.DELIVERED && persistentRespons.status !== RpcStatus.QUEUED),
+                    (oneWayElseTwoWay && persistentRespons.status === RpcStatus.DELIVERED) ||
+                    (persistentRespons.status !== RpcStatus.DELIVERED && persistentRespons.status !== RpcStatus.QUEUED)),
                   switchMap(persistentResponse => {
                     if ([RpcStatus.TIMEOUT, RpcStatus.EXPIRED].includes(persistentResponse.status)) {
                       return throwError(() => ({status: 504}));

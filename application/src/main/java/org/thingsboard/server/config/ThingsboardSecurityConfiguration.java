@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,9 +26,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.DefaultAuthenticationEventPublisher;
-import org.springframework.security.config.annotation.ObjectPostProcessor;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -133,6 +131,9 @@ public class ThingsboardSecurityConfiguration {
     @Autowired
     private AuthExceptionHandler authExceptionHandler;
 
+    @Autowired
+    private HttpSecurityHeadersCustomizer httpSecurityHeadersCustomizer;
+
     @Bean
     protected PayloadSizeFilter payloadSizeFilter() {
         return new PayloadSizeFilter(maxPayloadSizeConfig);
@@ -183,15 +184,12 @@ public class ThingsboardSecurityConfiguration {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(ObjectPostProcessor<Object> objectPostProcessor) throws Exception {
-        DefaultAuthenticationEventPublisher eventPublisher = objectPostProcessor
-                .postProcess(new DefaultAuthenticationEventPublisher());
-        var auth = new AuthenticationManagerBuilder(objectPostProcessor);
-        auth.authenticationEventPublisher(eventPublisher);
-        auth.authenticationProvider(restAuthenticationProvider);
-        auth.authenticationProvider(jwtAuthenticationProvider);
-        auth.authenticationProvider(refreshTokenAuthenticationProvider);
-        return auth.build();
+    public AuthenticationManager authenticationManager() {
+        return new ProviderManager(List.of(
+                restAuthenticationProvider,
+                jwtAuthenticationProvider,
+                refreshTokenAuthenticationProvider
+        ));
     }
 
     @Autowired
@@ -203,9 +201,11 @@ public class ThingsboardSecurityConfiguration {
         http
                 .securityMatchers(matchers -> matchers
                         .requestMatchers("/*.js", "/*.css", "/*.ico", "/assets/**", "/static/**"))
-                .headers(header -> header
-                        .defaultsDisabled()
-                        .addHeaderWriter(new StaticHeadersWriter(HttpHeaders.CACHE_CONTROL, "max-age=0, public")))
+                .headers(headers -> {
+                    headers.defaultsDisabled();
+                    headers.addHeaderWriter(new StaticHeadersWriter(HttpHeaders.CACHE_CONTROL, "max-age=0, public"));
+                    httpSecurityHeadersCustomizer.customize(headers);
+                })
                 .authorizeHttpRequests((authorize) -> authorize.anyRequest().permitAll())
                 .requestCache(RequestCacheConfigurer::disable)
                 .securityContext(AbstractHttpConfigurer::disable)
@@ -215,9 +215,11 @@ public class ThingsboardSecurityConfiguration {
 
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.headers(headers -> headers
-                        .cacheControl(config -> {})
-                        .frameOptions(config -> {}).disable())
+        http.headers(headers -> {
+                    headers.defaultsDisabled();
+                    headers.cacheControl(config -> {});
+                    httpSecurityHeadersCustomizer.customize(headers);
+                })
                 .cors(cors -> {})
                 .csrf(AbstractHttpConfigurer::disable)
                 .exceptionHandling(config -> {})
@@ -265,4 +267,5 @@ public class ThingsboardSecurityConfiguration {
             return new CorsFilter(source);
         }
     }
+
 }

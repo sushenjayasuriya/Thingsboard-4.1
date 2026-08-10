@@ -1,5 +1,5 @@
 ///
-/// Copyright © 2016-2025 The Thingsboard Authors
+/// Copyright © 2016-2026 The Thingsboard Authors
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,9 +26,10 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 
 @Component({
-  selector: 'tb-reset-password',
-  templateUrl: './reset-password.component.html',
-  styleUrls: ['./reset-password.component.scss']
+    selector: 'tb-reset-password',
+    templateUrl: './reset-password.component.html',
+    styleUrls: ['./reset-password.component.scss'],
+    standalone: false
 })
 export class ResetPasswordComponent extends PageComponent implements OnInit, OnDestroy {
 

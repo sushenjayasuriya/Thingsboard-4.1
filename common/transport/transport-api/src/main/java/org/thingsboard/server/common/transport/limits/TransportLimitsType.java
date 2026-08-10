@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,39 @@
  */
 package org.thingsboard.server.common.transport.limits;
 
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import org.thingsboard.server.common.data.tenant.profile.DefaultTenantProfileConfiguration;
+
+import java.util.function.Function;
+
+@Getter
+@RequiredArgsConstructor
 public enum TransportLimitsType {
-    TENANT_LIMITS, DEVICE_LIMITS, GATEWAY_LIMITS, GATEWAY_DEVICE_LIMITS
+
+    TENANT_LIMITS(
+            DefaultTenantProfileConfiguration::getTransportTenantMsgRateLimit,
+            DefaultTenantProfileConfiguration::getTransportTenantTelemetryMsgRateLimit,
+            DefaultTenantProfileConfiguration::getTransportTenantTelemetryDataPointsRateLimit
+    ),
+    DEVICE_LIMITS(
+            DefaultTenantProfileConfiguration::getTransportDeviceMsgRateLimit,
+            DefaultTenantProfileConfiguration::getTransportDeviceTelemetryMsgRateLimit,
+            DefaultTenantProfileConfiguration::getTransportDeviceTelemetryDataPointsRateLimit
+    ),
+    GATEWAY_LIMITS(
+            DefaultTenantProfileConfiguration::getTransportGatewayMsgRateLimit,
+            DefaultTenantProfileConfiguration::getTransportGatewayTelemetryMsgRateLimit,
+            DefaultTenantProfileConfiguration::getTransportGatewayTelemetryDataPointsRateLimit
+    ),
+    GATEWAY_DEVICE_LIMITS(
+            DefaultTenantProfileConfiguration::getTransportGatewayDeviceMsgRateLimit,
+            DefaultTenantProfileConfiguration::getTransportGatewayDeviceTelemetryMsgRateLimit,
+            DefaultTenantProfileConfiguration::getTransportGatewayDeviceTelemetryDataPointsRateLimit
+    );
+
+    private final Function<DefaultTenantProfileConfiguration, String> regularMsgRateLimit;
+    private final Function<DefaultTenantProfileConfiguration, String> telemetryMsgRateLimit;
+    private final Function<DefaultTenantProfileConfiguration, String> telemetryDataPointsRateLimit;
+
 }

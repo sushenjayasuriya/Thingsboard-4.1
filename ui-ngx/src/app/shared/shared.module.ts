@@ -1,5 +1,5 @@
 ///
-/// Copyright © 2016-2025 The Thingsboard Authors
+/// Copyright © 2016-2026 The Thingsboard Authors
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -68,6 +68,7 @@ import { EditorModule, TINYMCE_SCRIPT_SRC } from '@tinymce/tinymce-angular';
 import { UserMenuComponent } from '@shared/components/user-menu.component';
 import { TruncateWithTooltipDirective } from '@shared/directives/truncate-with-tooltip.directive';
 import { ContextMenuDirective } from '@shared/directives/context-menu.directive';
+import { ChipOverflowDirective } from '@shared/directives/chip-overflow.directive';
 import { NospacePipe } from '@shared/pipe/nospace.pipe';
 import { TranslateModule } from '@ngx-translate/core';
 import { TbCheckboxComponent } from '@shared/components/tb-checkbox.component';
@@ -146,7 +147,6 @@ import { QueueAutocompleteComponent } from '@shared/components/queue/queue-autoc
 import { ContactComponent } from '@shared/components/contact.component';
 import { TimezoneSelectComponent } from '@shared/components/time/timezone-select.component';
 import { FileSizePipe } from '@shared/pipe/file-size.pipe';
-import { WidgetsBundleSearchComponent } from '@shared/components/widgets-bundle-search.component';
 import { SelectableColumnsPipe } from '@shared/pipe/selectable-columns.pipe';
 import { QuickTimeIntervalComponent } from '@shared/components/time/quick-time-interval.component';
 import { OtaPackageAutocompleteComponent } from '@shared/components/ota-package/ota-package-autocomplete.component';
@@ -228,6 +228,11 @@ import { JsFuncModuleRowComponent } from '@shared/components/js-func-module-row.
 import { EntityKeyAutocompleteComponent } from '@shared/components/entity/entity-key-autocomplete.component';
 import { DurationLeftPipe } from '@shared/pipe/duration-left.pipe';
 import { MqttVersionSelectComponent } from '@shared/components/mqtt-version-select.component';
+import { MAT_BUTTON_TOGGLE_DEFAULT_OPTIONS } from '@angular/material/button-toggle';
+import { PhotoSwipeGalleryDirective } from '@shared/directives/photoswipe-gallery.directive';
+import {
+  AutocompleteAutoScrollRepositionDirective
+} from '@shared/directives/autocomplete-auto-scroll-reposition.directive';
 
 export function MarkedOptionsFactory(markedOptionsService: MarkedOptionsService) {
   return markedOptionsService;
@@ -283,6 +288,13 @@ export function MarkedOptionsFactory(markedOptionsService: MarkedOptionsService)
       provide: MAT_TOOLTIP_DEFAULT_OPTIONS,
       useValue: {
         disableTooltipInteractivity: true
+      }
+    },
+    {
+      provide: MAT_BUTTON_TOGGLE_DEFAULT_OPTIONS,
+      useValue: {
+        hideSingleSelectionIndicator: true,
+        hideMultipleSelectionIndicator: true
       }
     },
     CountryData
@@ -376,6 +388,9 @@ export function MarkedOptionsFactory(markedOptionsService: MarkedOptionsService)
     MarkdownEditorComponent,
     TruncateWithTooltipDirective,
     ContextMenuDirective,
+    ChipOverflowDirective,
+    PhotoSwipeGalleryDirective,
+    AutocompleteAutoScrollRepositionDirective,
     NospacePipe,
     MillisecondsToTimeStringPipe,
     EnumToArrayPipe,
@@ -396,7 +411,6 @@ export function MarkedOptionsFactory(markedOptionsService: MarkedOptionsService)
     EntityGatewaySelectComponent,
     ContactComponent,
     OtaPackageAutocompleteComponent,
-    WidgetsBundleSearchComponent,
     CopyButtonComponent,
     TogglePasswordComponent,
     WidgetButtonToggleComponent,
@@ -641,6 +655,9 @@ export function MarkedOptionsFactory(markedOptionsService: MarkedOptionsService)
     MarkdownEditorComponent,
     TruncateWithTooltipDirective,
     ContextMenuDirective,
+    ChipOverflowDirective,
+    PhotoSwipeGalleryDirective,
+    AutocompleteAutoScrollRepositionDirective,
     NospacePipe,
     MillisecondsToTimeStringPipe,
     EnumToArrayPipe,
@@ -662,7 +679,6 @@ export function MarkedOptionsFactory(markedOptionsService: MarkedOptionsService)
     EntityGatewaySelectComponent,
     ContactComponent,
     OtaPackageAutocompleteComponent,
-    WidgetsBundleSearchComponent,
     CopyButtonComponent,
     TogglePasswordComponent,
     WidgetButtonToggleComponent,

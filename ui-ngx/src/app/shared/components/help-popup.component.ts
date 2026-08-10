@@ -1,5 +1,5 @@
 ///
-/// Copyright © 2016-2025 The Thingsboard Authors
+/// Copyright © 2016-2026 The Thingsboard Authors
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,9 +17,10 @@
 import {
   Component,
   ElementRef,
-  Input, OnChanges,
-  OnDestroy,
-  Renderer2, SimpleChanges,
+  Input,
+  OnChanges,
+  Renderer2,
+  SimpleChanges,
   ViewChild,
   ViewContainerRef,
   ViewEncapsulation
@@ -33,12 +34,13 @@ import { Observable } from 'rxjs';
 import { TranslateService } from '@ngx-translate/core';
 
 @Component({
-  selector: '[tb-help-popup], [tb-help-popup-content], [tb-help-popup-content-base64], [tb-help-popup-async-content]',
-  templateUrl: './help-popup.component.html',
-  styleUrls: ['./help-popup.component.scss'],
-  encapsulation: ViewEncapsulation.None
+    selector: '[tb-help-popup], [tb-help-popup-content], [tb-help-popup-content-base64], [tb-help-popup-async-content]',
+    templateUrl: './help-popup.component.html',
+    styleUrls: ['./help-popup.component.scss'],
+    encapsulation: ViewEncapsulation.None,
+    standalone: false
 })
-export class HelpPopupComponent implements OnChanges, OnDestroy {
+export class HelpPopupComponent implements OnChanges {
 
   @ViewChild('toggleHelpButton', {read: ElementRef, static: false}) toggleHelpButton: ElementRef;
   @ViewChild('toggleHelpTextButton', {read: ElementRef, static: false}) toggleHelpTextButton: ElementRef;
@@ -93,7 +95,7 @@ export class HelpPopupComponent implements OnChanges, OnDestroy {
               private translate: TranslateService) {
   }
 
-  ngOnChanges(changes: SimpleChanges): void {
+  ngOnChanges(_changes: SimpleChanges): void {
     if (isDefinedAndNotNull(this.triggerText)) {
       this.triggerSafeHtml = this.sanitizer.bypassSecurityTrustHtml(this.triggerText);
     } else {
@@ -124,8 +126,4 @@ export class HelpPopupComponent implements OnChanges, OnDestroy {
         this.helpPopupStyle);
     }
   }
-
-  ngOnDestroy(): void {
-  }
-
 }

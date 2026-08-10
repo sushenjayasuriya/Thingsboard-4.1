@@ -1,6 +1,6 @@
 <!--
 
-    Copyright © 2016-2025 The Thingsboard Authors
+    Copyright © 2016-2026 The Thingsboard Authors
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -15,7 +15,8 @@
     limitations under the License.
 
 -->
-<a mat-button routerLinkActive="tb-active" [routerLinkActiveOptions]="{paths: 'subset', queryParams: 'ignored', matrixParams: 'ignored', fragment: 'ignored'}" routerLink="{{section.path}}">
+<a mat-button routerLinkActive="tb-active" [routerLinkActiveOptions]="{paths: 'subset', queryParams: 'ignored', matrixParams: 'ignored', fragment: 'ignored'}" routerLink="{{section.path}}"
+   [class.is-new]="section.isNew">
   <tb-icon matButtonIcon *ngIf="section.icon !== null">{{section.icon}}</tb-icon>
   <span>{{section.customTranslate ? (section.name | customTranslate) : (section.name | translate)}}</span>
 </a>

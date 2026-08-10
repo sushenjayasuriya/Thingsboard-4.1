@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.gson.JsonParser;
-import lombok.extern.slf4j.Slf4j;
 import org.thingsboard.common.util.DonAsynchron;
 import org.thingsboard.common.util.JacksonUtil;
 import org.thingsboard.rule.engine.api.AttributesSaveRequest;
@@ -41,7 +40,6 @@ import org.thingsboard.server.common.data.plugin.ComponentType;
 import org.thingsboard.server.common.data.util.TbPair;
 import org.thingsboard.server.common.msg.TbMsg;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -57,7 +55,6 @@ import static org.thingsboard.server.common.data.DataConstants.NOTIFY_DEVICE_MET
 import static org.thingsboard.server.common.data.DataConstants.SCOPE;
 import static org.thingsboard.server.common.data.msg.TbMsgType.POST_ATTRIBUTES_REQUEST;
 
-@Slf4j
 @RuleNode(
         type = ComponentType.ACTION,
         name = "save attributes",
@@ -108,7 +105,8 @@ import static org.thingsboard.server.common.data.msg.TbMsgType.POST_ATTRIBUTES_R
                 Output connections: <code>Success</code>, <code>Failure</code>.
                 """,
         configDirective = "tbActionNodeAttributesConfig",
-        icon = "file_upload"
+        icon = "file_upload",
+        docUrl = "https://thingsboard.io/docs/user-guide/rule-engine-2-0/nodes/action/save-attributes/"
 )
 public class TbMsgAttributesNode implements TbNode {
 
@@ -133,7 +131,7 @@ public class TbMsgAttributesNode implements TbNode {
             return;
         }
         String src = msg.getData();
-        List<AttributeKvEntry> newAttributes = new ArrayList<>(JsonConverter.convertToAttributes(JsonParser.parseString(src)));
+        List<AttributeKvEntry> newAttributes = JsonConverter.convertToAttributes(JsonParser.parseString(src));
         if (newAttributes.isEmpty()) {
             ctx.tellSuccess(msg);
             return;

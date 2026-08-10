@@ -1,5 +1,5 @@
 ///
-/// Copyright © 2016-2025 The Thingsboard Authors
+/// Copyright © 2016-2026 The Thingsboard Authors
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -14,16 +14,7 @@
 /// limitations under the License.
 ///
 
-import {
-  Component,
-  ElementRef,
-  EventEmitter,
-  forwardRef,
-  Input,
-  OnInit,
-  Output,
-  ViewChild
-} from '@angular/core';
+import { Component, ElementRef, EventEmitter, forwardRef, Input, OnInit, Output, ViewChild } from '@angular/core';
 import { MatFormFieldAppearance, SubscriptSizing } from '@angular/material/form-field';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR, UntypedFormBuilder, UntypedFormGroup } from '@angular/forms';
 import { firstValueFrom, merge, Observable, of, Subject } from 'rxjs';
@@ -40,14 +31,15 @@ import { getEntityDetailsPageURL, isDefinedAndNotNull, isEqual } from '@core/uti
 import { coerceArray, coerceBoolean } from '@shared/decorators/coercion';
 
 @Component({
-  selector: 'tb-entity-autocomplete',
-  templateUrl: './entity-autocomplete.component.html',
-  styleUrls: [],
-  providers: [{
-    provide: NG_VALUE_ACCESSOR,
-    useExisting: forwardRef(() => EntityAutocompleteComponent),
-    multi: true
-  }]
+    selector: 'tb-entity-autocomplete',
+    templateUrl: './entity-autocomplete.component.html',
+    styleUrls: [],
+    providers: [{
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => EntityAutocompleteComponent),
+            multi: true
+        }],
+    standalone: false
 })
 export class EntityAutocompleteComponent implements ControlValueAccessor, OnInit {
 
@@ -299,6 +291,24 @@ export class EntityAutocompleteComponent implements ControlValueAccessor, OnInit
           this.noEntitiesMatchingText = 'notification.no-recipients-matching';
           this.entityRequiredText = 'notification.notification-recipient-required';
           this.notFoundEntities = 'notification.no-recipients-text';
+          break;
+        case EntityType.AI_MODEL:
+          this.entityText = 'ai-models.ai-model';
+          this.noEntitiesMatchingText = 'ai-models.no-model-matching';
+          this.entityRequiredText = 'ai-models.model-required';
+          this.notFoundEntities = 'ai-models.no-model-text';
+          break;
+        case EntityType.DEVICE_PROFILE:
+          this.entityText = 'device-profile.device-profile';
+          this.noEntitiesMatchingText = 'device-profile.no-device-profiles-matching';
+          this.entityRequiredText = 'device-profile.device-profile-required';
+          this.notFoundEntities = 'device-profile.no-device-profiles-text';
+          break;
+        case EntityType.ASSET_PROFILE:
+          this.entityText = 'asset-profile.asset-profile';
+          this.noEntitiesMatchingText = 'asset-profile.no-asset-profiles-matching';
+          this.entityRequiredText = 'asset-profile.asset-profile-required';
+          this.notFoundEntities = 'asset-profile.no-asset-profiles-text';
           break;
         case AliasEntityType.CURRENT_CUSTOMER:
           this.entityText = 'customer.default-customer';

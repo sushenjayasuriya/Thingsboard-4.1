@@ -1,6 +1,6 @@
 <!--
 
-    Copyright © 2016-2025 The Thingsboard Authors
+    Copyright © 2016-2026 The Thingsboard Authors
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.thingsboard</groupId>
-        <version>4.1.0</version>
+        <version>4.2.2.3</version>
         <artifactId>common</artifactId>
     </parent>
     <groupId>org.thingsboard.common</groupId>
@@ -84,8 +84,11 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <!-- wire-schema-jvm (not wire-schema): from Wire 4.x the plain wire-schema artifact is an empty
+                 Kotlin-Multiplatform pointer whose Maven pom carries no classes, so the -jvm variant must be
+                 referenced explicitly. It transitively pulls wire-runtime-jvm. See CVE-2026-45799 fix. -->
             <groupId>com.squareup.wire</groupId>
-            <artifactId>wire-schema</artifactId>
+            <artifactId>wire-schema-jvm</artifactId>
         </dependency>
         <dependency>
             <groupId>org.thingsboard</groupId>
@@ -111,6 +114,10 @@
             <groupId>org.eclipse.leshan</groupId>
             <artifactId>leshan-core</artifactId>
             <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.thingsboard.langchain4j</groupId>
+            <artifactId>langchain4j-core</artifactId>
         </dependency>
     </dependencies>
 

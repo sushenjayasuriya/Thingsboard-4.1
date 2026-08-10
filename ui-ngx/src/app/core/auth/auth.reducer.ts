@@ -1,5 +1,5 @@
 ///
-/// Copyright © 2016-2025 The Thingsboard Authors
+/// Copyright © 2016-2026 The Thingsboard Authors
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -36,7 +36,10 @@ const emptyUserAuthState: AuthPayload = {
   maxDataPointsPerRollingArg: 0,
   maxDebugModeDurationMinutes: 0,
   userSettings: initialUserSettings,
-  trendzSettings: initialTrendzSettings
+  trendzSettings: initialTrendzSettings,
+  nullsOrderStrategy: 'default',
+  edqsEnabled: false,
+  iotHubBaseUrl: ''
 };
 
 export const initialState: AuthState = {
@@ -98,6 +101,9 @@ export const authReducer = (
       userSettings = {...state.userSettings};
       action.payload.forEach(path => unset(userSettings, path));
       return { ...state, ...{ userSettings }};
+
+    case AuthActionTypes.UPDATE_TRENDZ_SETTINGS:
+      return { ...state, trendzSettings: action.payload };
 
     default:
       return state;

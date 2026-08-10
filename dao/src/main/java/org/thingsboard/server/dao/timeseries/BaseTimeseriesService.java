@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -196,7 +196,8 @@ public class BaseTimeseriesService implements TimeseriesService {
             if (saveLatest) {
                 latestFutures.add(Futures.transform(timeseriesLatestDao.saveLatest(tenantId, entityId, tsKvEntry), version -> {
                     if (version != null) {
-                        edqsService.onUpdate(tenantId, ObjectType.LATEST_TS_KV, new LatestTsKv(entityId, tsKvEntry, version));
+                        TenantId edqsTenantId = entityId.getEntityType() == EntityType.TENANT ? (TenantId) entityId : tenantId;
+                        edqsService.onUpdate(edqsTenantId, ObjectType.LATEST_TS_KV, new LatestTsKv(entityId, tsKvEntry, version));
                     }
                     return version;
                 }, MoreExecutors.directExecutor()));
@@ -276,7 +277,8 @@ public class BaseTimeseriesService implements TimeseriesService {
         return Futures.transform(timeseriesLatestDao.removeLatest(tenantId, entityId, query), result -> {
             if (result.isRemoved()) {
                 Long version = result.getVersion();
-                edqsService.onDelete(tenantId, ObjectType.LATEST_TS_KV, new LatestTsKv(entityId, query.getKey(), version));
+                TenantId edqsTenantId = entityId.getEntityType() == EntityType.TENANT ? (TenantId) entityId : tenantId;
+                edqsService.onDelete(edqsTenantId, ObjectType.LATEST_TS_KV, new LatestTsKv(entityId, query.getKey(), version));
             }
             return result;
         }, MoreExecutors.directExecutor());

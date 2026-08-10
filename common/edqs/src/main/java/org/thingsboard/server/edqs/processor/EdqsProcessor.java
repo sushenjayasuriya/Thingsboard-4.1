@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -201,6 +201,25 @@ public class EdqsProcessor implements TbQueueHandler<TbProtoQueueMsg<ToEdqsMsg>,
                             .build())
                     .build(), queueMsg.getHeaders());
         });
+    }
+
+    @Override
+    public TbProtoQueueMsg<FromEdqsMsg> constructErrorResponseMsg(TbProtoQueueMsg<ToEdqsMsg> request, Throwable e) {
+        EdqsResponse response = new EdqsResponse();
+        String errorMessage;
+        if (e instanceof org.apache.kafka.common.errors.RecordTooLargeException) {
+            errorMessage = "Result set is too large";
+        } else if (e instanceof IllegalArgumentException || e instanceof NullPointerException) {
+            errorMessage = "Invalid request format or missing data: " + ExceptionUtil.getMessage(e);
+        } else {
+            errorMessage = ExceptionUtil.getMessage(e);
+        }
+        response.setError(errorMessage);
+        return new TbProtoQueueMsg<>(request.getKey(), FromEdqsMsg.newBuilder()
+                .setResponseMsg(TransportProtos.EdqsResponseMsg.newBuilder()
+                        .setValue(JacksonUtil.toString(response))
+                        .build())
+                .build(), request.getHeaders());
     }
 
     private EdqsResponse processRequest(TenantId tenantId, CustomerId customerId, EdqsRequest request) {

@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import org.thingsboard.server.cluster.TbClusterService;
 import org.thingsboard.server.common.data.Customer;
 import org.thingsboard.server.common.data.Device;
 import org.thingsboard.server.common.data.DeviceProfile;
+import org.thingsboard.server.common.data.HasTenantId;
 import org.thingsboard.server.common.data.TenantProfile;
 import org.thingsboard.server.common.data.alarm.Alarm;
 import org.thingsboard.server.common.data.asset.Asset;
@@ -32,6 +33,7 @@ import org.thingsboard.server.common.data.id.AssetId;
 import org.thingsboard.server.common.data.id.CustomerId;
 import org.thingsboard.server.common.data.id.DeviceId;
 import org.thingsboard.server.common.data.id.EntityId;
+import org.thingsboard.server.common.data.id.HasId;
 import org.thingsboard.server.common.data.id.RuleChainId;
 import org.thingsboard.server.common.data.id.RuleNodeId;
 import org.thingsboard.server.common.data.id.TenantId;
@@ -44,6 +46,7 @@ import org.thingsboard.server.common.data.rule.RuleNodeState;
 import org.thingsboard.server.common.data.script.ScriptLanguage;
 import org.thingsboard.server.common.msg.TbMsg;
 import org.thingsboard.server.common.msg.TbMsgMetaData;
+import org.thingsboard.server.dao.ai.AiModelService;
 import org.thingsboard.server.dao.alarm.AlarmCommentService;
 import org.thingsboard.server.dao.asset.AssetProfileService;
 import org.thingsboard.server.dao.asset.AssetService;
@@ -77,6 +80,7 @@ import org.thingsboard.server.dao.queue.QueueService;
 import org.thingsboard.server.dao.queue.QueueStatsService;
 import org.thingsboard.server.dao.relation.RelationService;
 import org.thingsboard.server.dao.resource.ResourceService;
+import org.thingsboard.server.dao.resource.TbResourceDataCache;
 import org.thingsboard.server.dao.rule.RuleChainService;
 import org.thingsboard.server.dao.tenant.TenantService;
 import org.thingsboard.server.dao.timeseries.TimeseriesService;
@@ -251,6 +255,8 @@ public interface TbContext {
 
     void checkTenantEntity(EntityId entityId) throws TbNodeException;
 
+    <E extends HasId<I> & HasTenantId, I extends EntityId> void checkTenantOrSystemEntity(E entity) throws TbNodeException;
+
     boolean isLocalEntity(EntityId entityId);
 
     RuleNodeId getSelfId();
@@ -306,6 +312,8 @@ public interface TbContext {
     EntityViewService getEntityViewService();
 
     ResourceService getResourceService();
+
+    TbResourceDataCache getTbResourceDataCache();
 
     OtaPackageService getOtaPackageService();
 
@@ -422,8 +430,18 @@ public interface TbContext {
 
     AuditLogService getAuditLogService();
 
+    RuleEngineAiChatModelService getAiChatModelService();
+
+    AiModelService getAiModelService();
+
     // Configuration parameters for the MQTT client that is used in the MQTT node and Azure IoT hub node
 
     MqttClientSettings getMqttClientSettings();
+
+    // Server-level safety caps for the HTTP client used by the REST API Call rule node (read from thingsboard.yml)
+
+    default TbHttpClientSettings getTbHttpClientSettings() {
+        return TbHttpClientSettings.DEFAULT;
+    }
 
 }

@@ -1,5 +1,5 @@
 ///
-/// Copyright © 2016-2025 The Thingsboard Authors
+/// Copyright © 2016-2026 The Thingsboard Authors
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -28,7 +28,6 @@ import { IAliasController, IStateController } from '@core/api/widget-api.models'
 import { ILayoutController } from './layout/layout.models';
 import { DashboardContextMenuItem, WidgetContextMenuItem } from '@home/models/dashboard-component.models';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { displayGrids } from 'angular-gridster2/lib/gridsterConfig.interface';
 import { ElementRef } from '@angular/core';
 
 export declare type DashboardPageScope = 'tenant' | 'customer';
@@ -87,7 +86,7 @@ export interface DashboardPageLayoutContext {
   ctrl: ILayoutController;
   dashboardCtrl: IDashboardController;
   ignoreLoading: boolean;
-  displayGrid: displayGrids;
+  displayGrid: 'always' | 'onDrag&Resize' | 'none';
 }
 
 export interface DashboardPageLayout {

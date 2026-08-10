@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
  */
 package org.thingsboard.server.dao.notification;
 
+import com.google.common.util.concurrent.FluentFuture;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -47,12 +48,13 @@ import org.thingsboard.server.dao.eventsourcing.SaveEntityEvent;
 import org.thingsboard.server.dao.user.UserService;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
+
+import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 
 @Service
 @Slf4j
@@ -72,9 +74,7 @@ public class DefaultNotificationTargetService extends AbstractEntityService impl
                     .created(notificationTarget.getId() == null).build());
             return savedTarget;
         } catch (Exception e) {
-            checkConstraintViolation(e, Map.of(
-                    "uq_notification_target_name", "Recipients group with such name already exists"
-            ));
+            checkConstraintViolation(e, "uq_notification_target_name", "Recipients group with such name already exists");
             throw e;
         }
     }
@@ -227,6 +227,12 @@ public class DefaultNotificationTargetService extends AbstractEntityService impl
     @Override
     public Optional<HasId<?>> findEntity(TenantId tenantId, EntityId entityId) {
         return Optional.ofNullable(findNotificationTargetById(tenantId, new NotificationTargetId(entityId.getId())));
+    }
+
+    @Override
+    public FluentFuture<Optional<HasId<?>>> findEntityAsync(TenantId tenantId, EntityId entityId) {
+        return FluentFuture.from(notificationTargetDao.findByIdAsync(tenantId, entityId.getId()))
+                .transform(Optional::ofNullable, directExecutor());
     }
 
     @Override

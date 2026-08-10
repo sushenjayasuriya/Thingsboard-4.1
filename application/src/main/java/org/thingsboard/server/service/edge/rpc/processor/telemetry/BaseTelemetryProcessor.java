@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2025 The Thingsboard Authors
+ * Copyright © 2016-2026 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -266,7 +266,7 @@ public abstract class BaseTelemetryProcessor extends BaseEdgeProcessor {
         SettableFuture<Void> futureToSet = SettableFuture.create();
         JsonObject json = JsonUtils.getJsonObject(msg.getKvList());
         AttributeScope scope = AttributeScope.valueOf(metaData.getValue(DataConstants.SCOPE));
-        List<AttributeKvEntry> attributes = new ArrayList<>(JsonConverter.convertToAttributes(json, ts));
+        List<AttributeKvEntry> attributes = JsonConverter.convertToAttributes(json, ts);
         ListenableFuture<List<AttributeKvEntry>> future = filterAttributesByTs(tenantId, entityId, scope, attributes);
         Futures.addCallback(future, new FutureCallback<>() {
             @Override
@@ -314,7 +314,7 @@ public abstract class BaseTelemetryProcessor extends BaseEdgeProcessor {
         SettableFuture<Void> futureToSet = SettableFuture.create();
         JsonObject json = JsonUtils.getJsonObject(msg.getKvList());
         AttributeScope scope = AttributeScope.valueOf(metaData.getValue(DataConstants.SCOPE));
-        List<AttributeKvEntry> attributes = new ArrayList<>(JsonConverter.convertToAttributes(json, ts));
+        List<AttributeKvEntry> attributes = JsonConverter.convertToAttributes(json, ts);
         ListenableFuture<List<AttributeKvEntry>> future = filterAttributesByTs(tenantId, entityId, scope, attributes);
         Futures.addCallback(future, new FutureCallback<>() {
             @Override
