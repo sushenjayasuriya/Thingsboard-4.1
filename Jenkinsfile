@@ -35,7 +35,7 @@ pipeline {
                 script {
                     echo 'Detecting current running ThingsBoard container...'
                     
-                    def containerList = sh(script: "docker ps --format '{{.Names}}' | grep '^thingsboard-' || true", returnStdout: true).trim()
+                    def containerList = sh(script: "docker ps --format '{{.Names}}' | grep '^dev-thingsboard-' || true", returnStdout: true).trim()
                     
                     if (containerList) {
                         def currentContainer = containerList.split("\\n")[0].trim()
@@ -307,7 +307,7 @@ CMD ["/bin/bash", "-c", "/usr/share/thingsboard/bin/install/upgrade.sh --fromVer
 services:
   tb-server:
     image: thingsboard:${params.TB_VERSION}
-    container_name: thingsboard-${params.TB_VERSION}
+    container_name: dev-thingsboard-${params.TB_VERSION}
     ports:
       - "8081:8080"
     environment:
@@ -358,8 +358,7 @@ networks:
                     
                     echo "Stop running kafka container"
 
-                    docker stop kafka-1 kafka-2 kafka-3 || true
-                    docker rm kafka-1 kafka-2 kafka-3 || true
+                    docker compose -f ${env.DOCKER_COMPOSE_KAFKA} stop || true
 
                     echo "Verifying no conflicting containers..."
                     docker ps -a | grep -E "(kafka|thingsboard)" || echo "No conflicting containers found"
@@ -401,18 +400,18 @@ networks:
                     
                     echo "Checking container health..."
                     // Use returnStatus: true to prevent Jenkins from aborting if grep fails (container crashed)
-                    def isRunning = sh(script: "docker ps | grep thingsboard-${params.TB_VERSION}", returnStatus: true) == 0
+                    def isRunning = sh(script: "docker ps | grep dev-thingsboard-${params.TB_VERSION}", returnStatus: true) == 0
                     
                     if (!isRunning) {
                         echo "CRITICAL: ThingsBoard container is NOT running! Fetching crash logs..."
-                        sh "docker logs thingsboard-${params.TB_VERSION} || true"
+                       sh "docker logs dev-thingsboard-${params.TB_VERSION} || true"
                         error "Deployment verification failed - Container crashed during the initialization window."
                     }
                     
                     echo "Checking ThingsBoard logs for startup completion..."
                     sh """
                         # Show recent logs to verify startup
-                        docker logs --tail 100 thingsboard-${params.TB_VERSION} | grep -E "(Started ThingsBoard|Startup complete|migration.*completed)" || true
+                       docker logs --tail 100 dev-thingsboard-${params.TB_VERSION} | grep -E "(Started ThingsBoard|Startup complete|migration.*completed)" || true
                     """
                     
                     echo "Testing HTTP endpoint..."
@@ -498,7 +497,7 @@ Backup branch: ${env.BACKUP_BRANCH}
                 
                 // SAVE LOGS BEFORE ROLLBACK
                 echo "Saving container logs to workspace..."
-                sh "docker logs thingsboard-${params.TB_VERSION} > thingsboard-crash.log 2>&1 || true"
+                sh "docker logs dev-thingsboard-${params.TB_VERSION} > thingsboard-crash.log 2>&1 || true"
                 archiveArtifacts artifacts: 'thingsboard-crash.log', allowEmptyArchive: true
 
                 if (env.UPGRADE_REQUIRED == "true") {
@@ -510,8 +509,9 @@ Backup branch: ${env.BACKUP_BRANCH}
                             #docker compose -f ${env.DOCKER_COMPOSE_KAFKA} -f ${env.DOCKER_COMPOSE_TB} down || true
                             
                             # Clean up any remaining containers
-                            docker stop thingsboard-${params.TB_VERSION} kafka-1 kafka-2 kafka-3 || true
-                            docker rm thingsboard-${params.TB_VERSION} kafka-1 kafka-2 kafka-3 || true
+                            docker stop dev-thingsboard-${params.TB_VERSION} || true
+                            docker rm dev-thingsboard-${params.TB_VERSION} || true
+                            docker compose -f ${env.DOCKER_COMPOSE_KAFKA} stop || true
 
                             # Git rollback
                             git checkout ${env.BACKUP_BRANCH} || echo "Could not checkout backup branch"
@@ -526,7 +526,7 @@ services:
     image: ${env.ROLLBACK_IMAGE}
     container_name: ${env.CURRENT_CONTAINER_NAME}
     ports:
-      - "8080:8080"
+      - "8081:8080"
     environment:
       - DATABASE_TS_TYPE=cassandra
       - SPRING_DATASOURCE_URL=jdbc:postgresql://10.160.0.2:5432/thingsboard_restore
