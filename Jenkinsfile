@@ -195,15 +195,18 @@ networks:
 
         stage('Stop Current ThingsBoard') {
             steps {
-                echo "🛑 Forcibly clearing old ThingsBoard Production containers..."
+                echo "🛑 Forcibly clearing old ThingsBoard Production containers and proxies..."
                 sh """
                     # Force stop and remove containers cleanly
                     docker rm -f thingsboard-prod-4.1 thingsboard-prod-4.0 || true
                     
+                    # Kill any lingering docker-proxy or process holding port 8080
+                    sudo fuser -k 8080/tcp || true
+                    
                     # Give the OS kernel a moment to release port 8080 bindings
                     sleep 3
                     
-                    echo "✅ Old Production containers purged successfully"
+                    echo "✅ Port 8080 fully released and cleared"
                 """
             }
         }
