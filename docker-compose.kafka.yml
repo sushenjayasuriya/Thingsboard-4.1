@@ -5,8 +5,8 @@ services:
     image: confluentinc/cp-kafka:7.5.0
     container_name: kafka-1
     ports:
-      - "9092:9092"
-      - "9093:9093"
+      - "19092:9092"
+      - "19093:9093"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -41,8 +41,8 @@ services:
     image: confluentinc/cp-kafka:7.5.0
     container_name: kafka-2
     ports:
-      - "9094:9092"  # Different external port to avoid conflicts
-      - "9095:9093"
+      - "19094:9092"  # Different external port to avoid conflicts
+      - "19095:9093"
     environment:
       KAFKA_BROKER_ID: 2
       KAFKA_PROCESS_ROLES: broker,controller
@@ -77,8 +77,8 @@ services:
     image: confluentinc/cp-kafka:7.5.0
     container_name: kafka-3
     ports:
-      - "9096:9092"  # Different external port to avoid conflicts
-      - "9097:9093"
+      - "19096:9092"  # Different external port to avoid conflicts
+      - "19097:9093"
     environment:
       KAFKA_BROKER_ID: 3
       KAFKA_PROCESS_ROLES: broker,controller
@@ -113,7 +113,7 @@ services:
     image: ghcr.io/kafbat/kafka-ui:latest
     container_name: kafbat-ui
     ports:
-      - "8087:8080"  # Using 8085 since 8080 and 8081 are unavailable
+      - "18087:8080"  # Using 8085 since 8080 and 8081 are unavailable
     environment:
       # Connect to your 3-node Kafka cluster
       KAFKA_CLUSTERS_0_NAME: "ThingsBoard Kafka Cluster"
