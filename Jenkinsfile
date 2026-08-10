@@ -237,10 +237,10 @@ networks:
                     echo "🔍 Verifying ThingsBoard Production deployment..."
                     echo "⏳ Waiting for ThingsBoard Production to start up..."
                     
-                    // Wait longer for production startup
-                    sleep 90
+                    // Wait a bit for the container to initialize
+                    sleep 60
                     
-                    echo "🔍 Checking Production container health..."
+                    echo "🔍 Checking Production container presence..."
                     sh "docker ps | grep thingsboard-prod-${params.TB_VERSION}"
                     
                     echo "🔍 Checking ThingsBoard Production logs for startup completion..."
@@ -249,32 +249,34 @@ networks:
                         docker logs --tail 50 thingsboard-prod-${params.TB_VERSION} | grep -E "(Started ThingsBoard|Startup complete)" || true
                     """
                     
-                    echo "🌐 Testing Production HTTP endpoint..."
-                    // Test the Production web interface
-                    def maxRetries = 8  // More retries for production
+                    echo "🌐 Polling Docker internal health status..."
+                    def maxRetries = 10  // Increased slightly to give production plenty of time
                     def retryCount = 0
-                    def httpStatus = ""
+                    def containerStatus = ""
                     
                     while (retryCount < maxRetries) {
                         try {
-                            httpStatus = sh(script: "curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/login", returnStdout: true).trim()
-                            if (httpStatus == "200") {
-                                echo "✅ ThingsBoard Production is responding correctly (HTTP 200)"
+                            // Ask Docker for the official health status of the container
+                            containerStatus = sh(script: "docker inspect --format='{{.State.Health.Status}}' thingsboard-prod-${params.TB_VERSION}", returnStdout: true).trim()
+                            
+                            if (containerStatus == "healthy") {
+                                echo "✅ ThingsBoard Production is fully up and healthy!"
                                 break
                             }
                         } catch (Exception e) {
-                            echo "⏳ Attempt ${retryCount + 1}/${maxRetries}: HTTP status ${httpStatus}, retrying in 30 seconds..."
+                            echo "⏳ Error checking status, retrying..."
                         }
                         
+                        echo "⏳ Attempt ${retryCount + 1}/${maxRetries}: Status is '${containerStatus}', retrying in 30 seconds..."
                         retryCount++
                         if (retryCount < maxRetries) {
                             sleep 30
                         }
                     }
                     
-                    if (httpStatus != "200") {
-                        echo "❌ ThingsBoard Production is not responding correctly after ${maxRetries} attempts (HTTP ${httpStatus})"
-                        error "❌ Production Deployment verification failed — HTTP status: ${httpStatus}"
+                    if (containerStatus != "healthy") {
+                        echo "❌ ThingsBoard Production failed to become healthy after ${maxRetries} attempts (Status: ${containerStatus})"
+                        error "❌ Production Deployment verification failed — Container is not healthy"
                     }
                     
                     echo "🎉 Production Deployment verified successfully!"
@@ -282,9 +284,6 @@ networks:
                     // Additional Production checks
                     echo "🔒 Running basic Production health checks..."
                     sh """
-                        # Check if container is healthy
-                        docker inspect thingsboard-prod-${params.TB_VERSION} --format='{{.State.Health.Status}}' || echo "No health check defined"
-                        
                         # Check memory usage
                         docker stats --no-stream --format "Memory: {{.MemUsage}}" thingsboard-prod-${params.TB_VERSION}
                         
@@ -293,7 +292,6 @@ networks:
                 }
             }
         }
-    }
 
     post {
         success {
