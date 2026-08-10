@@ -422,7 +422,7 @@ networks:
                     
                     while (retryCount < maxRetries) {
                         try {
-                            httpStatus = sh(script: "curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/login", returnStdout: true).trim()
+                            httpStatus = sh(script: "curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/login", returnStdout: true).trim()
                             if (httpStatus == "200") {
                                 echo "ThingsBoard is responding correctly (HTTP 200)"
                                 break
