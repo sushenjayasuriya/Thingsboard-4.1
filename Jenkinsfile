@@ -194,20 +194,14 @@ networks:
         }
 
         stage('Stop Current ThingsBoard') {
-            when {
-                expression { env.UPGRADE_REQUIRED == "true" && env.CURRENT_CONTAINER_NAME != "" }
-            }
             steps {
-                echo "🛑 Stopping current ThingsBoard Production container: ${env.CURRENT_CONTAINER_NAME}"
+                echo "🛑 Stopping old ThingsBoard Production containers..."
                 sh """
-                    # Stop current ThingsBoard Production service (keep kafka running)
-                    docker stop ${env.CURRENT_CONTAINER_NAME} || true
-                    docker rm ${env.CURRENT_CONTAINER_NAME} || true
-                    echo "✅ Old Production container stopped and removed"
-
+                    # Stop and remove any lingering production containers safely
+                    docker ps -a --format '{{.Names}}' | grep '^thingsboard-prod-' | xargs -r docker stop || true
+                    docker ps -a --format '{{.Names}}' | grep '^thingsboard-prod-' | xargs -r docker rm || true
                     
-                    echo "🔍 Verifying no conflicting containers..."
-                    docker ps -a | grep -E "(thingsboard)" || echo "No conflicting containers found"
+                    echo "✅ Old Production containers cleared without affecting Dev or QA"
                 """
             }
         }
