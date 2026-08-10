@@ -292,6 +292,7 @@ networks:
                 }
             }
         }
+    }
 
     post {
         success {
