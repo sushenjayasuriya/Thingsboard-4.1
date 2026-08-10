@@ -221,10 +221,10 @@ pipeline {
                             
                             # Push branches
                             echo "Pushing upgrade branch: ${env.UPGRADE_BRANCH}"
-                            git push origin ${env.UPGRADE_BRANCH}
+                            git push -f origin ${env.UPGRADE_BRANCH}
                             
                             echo "Pushing backup branch: ${env.BACKUP_BRANCH}"  
-                            git push origin ${env.BACKUP_BRANCH}
+                            git push -f origin ${env.BACKUP_BRANCH}
                             
                             # Reset remote URL to remove credentials from git config
                             git remote set-url origin https://github.com/sushenjayasuriya/Thingsboard-4.1.git
