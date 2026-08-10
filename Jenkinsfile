@@ -108,10 +108,10 @@ pipeline {
                         git branch
                         
                         # Create backup branch of current state
-                        git branch ${env.BACKUP_BRANCH} || echo "Backup branch already exists"
+                        git branch -f ${env.BACKUP_BRANCH}
                         
                         # Create or switch to upgrade branch
-                        git checkout -b ${env.UPGRADE_BRANCH} || git checkout ${env.UPGRADE_BRANCH}
+                        git checkout -B ${env.UPGRADE_BRANCH}
                         
                         # Add upstream remote if not exists
                         git remote add upstream ${UPSTREAM_REPO} || echo "Upstream remote already exists"
