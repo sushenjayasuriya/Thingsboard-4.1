@@ -309,7 +309,7 @@ services:
     image: thingsboard:${params.TB_VERSION}
     container_name: thingsboard-${params.TB_VERSION}
     ports:
-      - "8080:8080"
+      - "8081:8080"
     environment:
       - JAVA_OPTS=-Xms1024M -Xmx1024M -Dspring.datasource.url=jdbc:postgresql://10.160.0.2:5432/thingsboard_restore -Dspring.datasource.username=nethmi -Dspring.datasource.password=123456 -Dcassandra.cluster.name=ThingsBoard Cluster -Dcassandra.keyspace.name=thingsboard -Dcassandra.url=10.160.0.2:9042 -Dcassandra.use.credentials=false
       - TB_QUEUE_TYPE=kafka
