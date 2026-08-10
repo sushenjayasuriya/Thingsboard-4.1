@@ -195,18 +195,35 @@ networks:
 
         stage('Stop Current ThingsBoard') {
             steps {
-                echo "🛑 Forcibly clearing old ThingsBoard Production containers and proxies..."
+                echo "🛑 Forcibly clearing old ThingsBoard Production containers..."
                 sh """
                     # Force stop and remove containers cleanly
                     docker rm -f thingsboard-prod-4.1 thingsboard-prod-4.0 || true
                     
-                    # Kill any lingering docker-proxy or process holding port 8080
+                    echo "✅ Old Production containers purged successfully"
+                """
+            }
+        }
+
+        stage('Deploy New Version') {
+            when {
+                expression { env.UPGRADE_REQUIRED == "true" }
+            }
+            steps {
+                echo "🚀 Deploying complete Production stack with ThingsBoard ${params.TB_VERSION}"
+                sh """
+                    # Vaporize anything holding port 8080 on the host right this second
                     sudo fuser -k 8080/tcp || true
                     
-                    # Give the OS kernel a moment to release port 8080 bindings
-                    sleep 3
+                    # Deploy new Production version immediately
+                    docker compose -f ${env.DOCKER_COMPOSE_TB} up -d
                     
-                    echo "✅ Port 8080 fully released and cleared"
+                    echo "✅ Complete Production stack deployed with ThingsBoard ${params.TB_VERSION}"
+                    echo "🔍 Checking Production container status..."
+                    docker ps | grep -E "(thingsboard-prod)"
+                    
+                    echo "🔍 Waiting for Production services to be ready..."
+                    sleep 15
                 """
             }
         }
