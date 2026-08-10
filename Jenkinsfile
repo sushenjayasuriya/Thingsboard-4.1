@@ -195,16 +195,15 @@ networks:
 
         stage('Stop Current ThingsBoard') {
             steps {
-                echo "🛑 Stopping old ThingsBoard Production containers..."
+                echo "🛑 Forcibly clearing old ThingsBoard Production containers..."
                 sh """
-                    # Force stop and remove container by its known production name
-                    docker stop thingsboard-prod-4.1 thingsboard-prod-4.0 || true
-                    docker rm thingsboard-prod-4.1 thingsboard-prod-4.0 || true
+                    # Force stop and remove containers cleanly
+                    docker rm -f thingsboard-prod-4.1 thingsboard-prod-4.0 || true
                     
                     # Give the OS kernel a moment to release port 8080 bindings
                     sleep 3
                     
-                    echo "✅ Old Production containers cleared safely"
+                    echo "✅ Old Production containers purged successfully"
                 """
             }
         }
