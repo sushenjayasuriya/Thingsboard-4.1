@@ -28,29 +28,23 @@ pipeline {
             }
         }
 
-        stage('Detect Current Installed Version') {
+                stage('Detect Current Installed Version') {
             steps {
                 script {
-                    echo '🔍 Detecting current running ThingsBoard Production container...'
+                    echo '🔍 Detecting current running ThingsBoard Production container in Kubernetes...'
                     
-                    def containerList = sh(script: "docker ps --format '{{.Names}}' | grep '^thingsboard-prod-' || true", returnStdout: true).trim()
+                    def currentImage = sh(script: "kubectl describe deployment thingsboard -n thingsboard | grep Image | awk '{print \$2}' || true", returnStdout: true).trim()
                     
-                    if (containerList) {
-                        def currentContainer = containerList.split("\\n")[0].trim()
-                        def currentImage = sh(script: "docker inspect ${currentContainer} --format '{{ index .Config.Image }}'", returnStdout: true).trim()
+                    if (currentImage) {
                         def currentTag = currentImage.split(":")[1]
-
-                        echo "📦 Current running Production container: ${currentContainer}"
                         echo "📦 Current running Production image: ${currentImage}"
                         echo "📦 Current Production version: ${currentTag}"
 
-                        env.CURRENT_CONTAINER_NAME = currentContainer
                         env.CURRENT_IMAGE_NAME = currentImage
                         env.CURRENT_VERSION = currentTag
                         env.ROLLBACK_IMAGE = "thingsboard-prod:rollback-${currentTag}"
                     } else {
-                        echo "⚠️ No running ThingsBoard Production container found"
-                        env.CURRENT_CONTAINER_NAME = ""
+                        echo "⚠️ No running ThingsBoard Production pod found in Kubernetes"
                         env.CURRENT_VERSION = "none"
                         env.CURRENT_IMAGE_NAME = ""
                         env.ROLLBACK_IMAGE = ""
@@ -142,153 +136,60 @@ pipeline {
             }
         }
 
-        stage('Generate Docker Compose') {
+
+                stage('Deploy To Kubernetes') {
             when {
                 expression { env.UPGRADE_REQUIRED == "true" }
             }
             steps {
                 script {
-                    echo "📝 Generating docker-compose file for ThingsBoard Production ${params.TB_VERSION}"
+                    echo "🚀 Deploying custom image to Kubernetes cluster..."
                     
-                    def composeContent = """version: "3.8"
-services:
-  tb-server:
-    image: thingsboard-prod:${params.TB_VERSION}
-    container_name: thingsboard-prod-${params.TB_VERSION}
-    ports:
-      - "8080:8080"
-    environment:
-      - JAVA_OPTS=-Xms2048M -Xmx2048M
-      - DATABASE_TS_TYPE=cassandra
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://10.160.0.3:5432/thingsboard_prod
-      - SPRING_DATASOURCE_USERNAME=nethmi
-      - SPRING_DATASOURCE_PASSWORD=123456
-      - CASSANDRA_CLUSTER_NAME=ThingsBoard Cluster
-      - CASSANDRA_KEYSPACE_NAME=thingsboard_prod
-      - CASSANDRA_URL=10.160.0.3:9042
-      - CASSANDRA_USE_CREDENTIALS=false
-      - SECURITY_OAUTH2_ENABLED=true
-      - TB_QUEUE_TYPE=kafka
-      - TB_QUEUE_PREFIX=prod_
-      - TB_KAFKA_SERVERS=kafka:9092
-      - METRICS_ENABLE=true
-      - METRICS_ENDPOINTS_EXPOSE=prometheus
-    networks:
-      - tb-kafka-net
-    restart: no
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+                    sh """
+                        # 1. Stop and remove the old host Docker container if it exists (keeps port 8080 free)
+                        docker rm -f thingsboard-prod-${params.TB_VERSION} || true
+                        docker ps -q --filter "publish=8080" | xargs -r docker rm -f || true
 
-networks:
-  tb-kafka-net:
-    external: true
-"""
-                    
-                    writeFile file: env.DOCKER_COMPOSE_TB, text: composeContent
-                    echo "✅ Generated Production compose file: ${env.DOCKER_COMPOSE_TB}"
+                        # 2. Export the Docker image built by Jenkins
+                        docker save ${env.IMAGE_NAME} -o /tmp/tb-image.tar
+
+                        # 3. Import it directly into Kubernetes containerd
+                        sudo ctr -n k8s.io images import /tmp/tb-image.tar
+
+                        # 4. Update the Kubernetes deployment and restart
+                        kubectl set image deployment/thingsboard thingsboard=${env.IMAGE_NAME} -n thingsboard
+                        kubectl rollout restart deployment/thingsboard -n thingsboard
+                        kubectl rollout status deployment/thingsboard -n thingsboard
+                        
+                        echo "✅ Kubernetes deployment triggered successfully!"
+                    """
                 }
             }
         }
-
-        stage('Stop Current ThingsBoard') {
-            steps {
-                echo "🛑 Forcibly clearing old ThingsBoard Production containers..."
-                sh """
-                    # Force stop and remove containers cleanly
-                    docker rm -f thingsboard-prod-4.1 thingsboard-prod-4.0 || true
-                    
-                    echo "✅ Old Production containers purged successfully"
-                """
-            }
-        }
-
-        stage('Deploy New Version') {
-            when {
-                expression { env.UPGRADE_REQUIRED == "true" }
-            }
-            steps {
-                echo "🚀 Deploying complete Production stack with ThingsBoard ${params.TB_VERSION}"
-                sh """
-                    # Stop any container currently binding port 8080 using Docker's socket directly
-                    docker ps -q --filter "publish=8080" | xargs -r docker rm -f || true
-                    
-                    # Deploy new Production version immediately
-                    docker compose -f ${env.DOCKER_COMPOSE_TB} up -d
-                    
-                    echo "✅ Complete Production stack deployed with ThingsBoard ${params.TB_VERSION}"
-                    echo "🔍 Checking Production container status..."
-                    docker ps | grep -E "(thingsboard-prod)"
-                    
-                    echo "🔍 Waiting for Production services to be ready..."
-                    sleep 15
-                """
-            }
-        }
-
-        stage('Verify Deployment') {
+        
+                stage('Verify Deployment') {
             when {
                 expression { env.UPGRADE_REQUIRED == "true" }
             }
             steps {
                 script {
-                    echo "🔍 Verifying ThingsBoard Production deployment..."
-                    echo "⏳ Waiting for ThingsBoard Production to start up..."
+                    echo "🔍 Verifying ThingsBoard Kubernetes deployment..."
                     
-                    // Wait a bit for the container to initialize
-                    sleep 60
+                    // Wait for Kubernetes rollout to finish
+                    sh "kubectl rollout status deployment/thingsboard -n thingsboard --timeout=5m"
                     
-                    echo "🔍 Checking Production container presence..."
-                    sh "docker ps | grep thingsboard-prod-${params.TB_VERSION}"
+                    echo "✅ Kubernetes rollout completed successfully!"
+                    echo "🔍 Listing all running pods in the thingsboard namespace:"
+                    sh "kubectl get pods -n thingsboard"
                     
-                    echo "🔍 Checking ThingsBoard Production logs for startup completion..."
+                    echo "🔍 Checking ThingsBoard logs for startup completion..."
+                    // Get the newest pod and check its logs for the startup message
                     sh """
-                        # Show recent logs to verify startup
-                        docker logs --tail 50 thingsboard-prod-${params.TB_VERSION} | grep -E "(Started ThingsBoard|Startup complete)" || true
+                        POD_NAME=\$(kubectl get pods -n thingsboard -l app=thingsboard -o jsonpath='{.items[-1:].metadata.name}')
+                        echo "Checking logs for pod: \$POD_NAME"
+                        kubectl logs --tail=20 \$POD_NAME -n thingsboard | grep -E "(Started ThingsBoard|Startup complete)" || echo "⚠️ Startup message not found yet, but rollout is complete."
                     """
-                    
-                    echo "🌐 Polling Docker internal health status..."
-                    def maxRetries = 10  // Increased slightly to give production plenty of time
-                    def retryCount = 0
-                    def containerStatus = ""
-                    
-                    while (retryCount < maxRetries) {
-                        try {
-                            // Ask Docker for the official health status of the container
-                            containerStatus = sh(script: "docker inspect --format='{{.State.Health.Status}}' thingsboard-prod-${params.TB_VERSION}", returnStdout: true).trim()
-                            
-                            if (containerStatus == "healthy") {
-                                echo "✅ ThingsBoard Production is fully up and healthy!"
-                                break
-                            }
-                        } catch (Exception e) {
-                            echo "⏳ Error checking status, retrying..."
-                        }
-                        
-                        echo "⏳ Attempt ${retryCount + 1}/${maxRetries}: Status is '${containerStatus}', retrying in 30 seconds..."
-                        retryCount++
-                        if (retryCount < maxRetries) {
-                            sleep 30
-                        }
-                    }
-                    
-                    if (containerStatus != "healthy") {
-                        echo "❌ ThingsBoard Production failed to become healthy after ${maxRetries} attempts (Status: ${containerStatus})"
-                        error "❌ Production Deployment verification failed — Container is not healthy"
-                    }
-                    
-                    echo "🎉 Production Deployment verified successfully!"
-                    
-                    // Additional Production checks
-                    echo "🔒 Running basic Production health checks..."
-                    sh """
-                        # Check memory usage
-                        docker stats --no-stream --format "Memory: {{.MemUsage}}" thingsboard-prod-${params.TB_VERSION}
-                        
-                        echo "✅ Production health checks completed"
-                    """
+                    echo "✅ Production Deployment verified successfully!"
                 }
             }
         }
@@ -302,8 +203,8 @@ networks:
 🎉 ThingsBoard Production Upgrade Completed Successfully!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✅ Upgraded from: ${env.CURRENT_VERSION ?: 'none'} → ${params.TB_VERSION}
-🐳 Production Container: thingsboard-prod-${params.TB_VERSION}
-🌐 Production Web UI: http://localhost:8080
+🐳 Kubernetes Pod: thingsboard-xxxxx-xxxxx (deployment/thingsboard)
+🌐 Production Web UI: https://tb.utech-iiot.lk
 📦 Backup available: ${env.ROLLBACK_IMAGE ?: 'none'}
 🔒 Security: OAuth2 Enabled
 📊 Monitoring: Enabled
@@ -317,99 +218,31 @@ networks:
             }
         }
         
-        failure {
+                failure {
             script {
                 echo "❌ ThingsBoard Production upgrade FAILED! Starting EMERGENCY rollback procedures..."
                 
-                if (env.UPGRADE_REQUIRED == "true" && env.ROLLBACK_IMAGE && env.CURRENT_CONTAINER_NAME) {
+                if (env.UPGRADE_REQUIRED == "true") {
                     try {
-                        echo "🔄 Rolling back Production to previous version..."
-
-                        sh """
-                            # Stop failed Production deployment
-                            docker compose -f ${env.DOCKER_COMPOSE_TB} down || true
-                            
-                            # Clean up any remaining containers
-                            docker stop thingsboard-prod-${params.TB_VERSION} || true
-                            docker rm thingsboard-prod-${params.TB_VERSION} || true
-                            
-                            # Restore previous Production version with Docker Compose approach
-                            # First, create a rollback compose file
-                            cat > docker-compose.rollback.prod.yml << 'EOF'
-version: "3.8"
-services:
-  tb-server:
-    image: ${env.ROLLBACK_IMAGE}
-    container_name: ${env.CURRENT_CONTAINER_NAME}
-    ports:
-      - "8080:8080"
-    environment:
-      - DATABASE_TS_TYPE=cassandra
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://10.160.0.3:5432/thingsboard_prod
-      - SPRING_DATASOURCE_USERNAME=nethmi
-      - SPRING_DATASOURCE_PASSWORD=123456
-      - CASSANDRA_CLUSTER_NAME=ThingsBoard Cluster
-      - CASSANDRA_KEYSPACE_NAME=thingsboard_prod
-      - CASSANDRA_URL=10.160.0.3:9042
-      - CASSANDRA_USE_CREDENTIALS=false
-      - SECURITY_OAUTH2_ENABLED=true
-      - TB_QUEUE_TYPE=kafka
-      - TB_QUEUE_PREFIX=prod_
-      - TB_KAFKA_SERVERS=kafka:9092
-      - METRICS_ENABLE=true
-      - METRICS_ENDPOINTS_EXPOSE=prometheus
-    networks:
-      - tb-kafka-net
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/login"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-networks:
-  tb-kafka-net:
-    external: true
-EOF
-                            
-                            # Deploy rollback stack for Production
-                            docker compose -f docker-compose.rollback.prod.yml up -d
-                            
-                            # Wait and verify rollback
-                            sleep 60
-                            curl -f http://localhost:8080/login || echo "⚠️ Production rollback verification failed"
-                        """
-
+                        echo "🔄 Rolling back Production Kubernetes deployment to previous version..."
                         
-                        echo "✅ Production Rollback completed successfully. ThingsBoard Production restored to v${env.CURRENT_VERSION}"
+                        // Kubernetes native rollback
+                        sh """
+                            kubectl rollout undo deployment/thingsboard -n thingsboard
+                            kubectl rollout status deployment/thingsboard -n thingsboard --timeout=5m
+                        """
+                        
+                        echo "✅ Production Rollback completed successfully."
                         echo "🚨 URGENT: Notify operations team that Production rollback was executed!"
                     } catch (Exception e) {
                         echo "❌ Production Rollback FAILED: ${e.getMessage()}"
                         echo "🚨 CRITICAL: Manual intervention required for Production immediately!"
                     }
                 } else {
-                    echo "⚠️ No Production backup available for rollback. CRITICAL: Manual intervention required!"
+                    echo "⚠️ No Production upgrade was in progress, skipping rollback."
                 }
                 
                 error "❌ ThingsBoard Production upgrade failed. URGENT: Check logs and notify operations team!"
             }
         }
-        
-        unstable {
-            echo "⚠️ ThingsBoard Production upgrade completed but may be unstable. Monitor very closely!"
-        }
-        
-        always {
-            echo "🧹 Cleaning up Production temporary files..."
-            sh """
-                # Clean up downloaded RPM files
-                #rm -f thingsboard-*.rpm || true
-                
-                # Clean up generated compose file
-                rm -f ${env.DOCKER_COMPOSE_TB} || true
-                
-                echo "✅ Production Cleanup completed"
-            """
-        }
-    }
 }
