@@ -106,17 +106,6 @@ pipeline {
             }
         }
 
-        stage('Backup Current Image') {
-            when {
-                expression { env.UPGRADE_REQUIRED == "true" && env.CURRENT_IMAGE_NAME != "" }
-            }
-            steps {
-                echo "📦 Creating backup of current Production image: ${env.ROLLBACK_IMAGE}"
-                sh "docker tag ${env.CURRENT_IMAGE_NAME} ${env.ROLLBACK_IMAGE}"
-                echo "✅ Production backup image created: ${env.ROLLBACK_IMAGE}"
-            }
-        }
-
         stage('Build New Docker Image') {
             when {
                 expression { env.UPGRADE_REQUIRED == "true" }
@@ -190,7 +179,7 @@ pipeline {
                 }
             }
         }
-    } // <-- This line CLOSES the 'stages' block!
+    } // Close stages
 
     post {
         success {
@@ -202,7 +191,7 @@ pipeline {
 ✅ Upgraded from: ${env.CURRENT_VERSION ?: 'none'} → ${params.TB_VERSION}
 🐳 Kubernetes Pod: thingsboard-xxxxx-xxxxx (deployment/thingsboard)
 🌐 Production Web UI: https://tb.utech-iiot.lk
-📦 Backup available: ${env.ROLLBACK_IMAGE ?: 'none'}
+📦 Backup available: N/A (Kubernetes manages rollback history)
 🔒 Security: OAuth2 Enabled
 📊 Monitoring: Enabled
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -251,10 +240,10 @@ pipeline {
             echo "🧹 Cleaning up Production temporary files..."
             sh """
                 # Clean up downloaded RPM files
-                #rm -f thingsboard-*.rpm || true
+                rm -f thingsboard-*.rpm || true
                 
                 echo "✅ Production Cleanup completed"
             """
         }
     }
-} // <-- This line CLOSES the entire 'pipeline' block!
+} // Close pipeline
