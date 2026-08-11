@@ -123,6 +123,28 @@ pipeline {
             }
         }
 
+                stage('Run Database Migration') {
+            when {
+                expression { env.UPGRADE_REQUIRED == "true" }
+            }
+            steps {
+                script {
+                    echo "⏳ Running ThingsBoard database migration for version ${params.TB_VERSION}..."
+                    sh """
+                        # Delete any old migration job (if it exists)
+                        kubectl delete job thingsboard-install -n thingsboard --ignore-not-found=true
+                        
+                        # Apply the migration job using the new image
+                        kubectl apply -f thingsboard-install.yaml -n thingsboard
+                        
+                        # Wait for the migration to complete (5 min timeout)
+                        kubectl wait --for=condition=complete job/thingsboard-install -n thingsboard --timeout=5m
+                        echo "✅ Database migration completed successfully!"
+                    """
+                }
+            }
+        }
+
         stage('Deploy To Kubernetes') {
             when {
                 expression { env.UPGRADE_REQUIRED == "true" }
