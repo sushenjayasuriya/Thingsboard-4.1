@@ -72,6 +72,15 @@ pipeline {
             }
         }
 
+                stage('Block Downgrades') {
+            when {
+                expression { env.CURRENT_VERSION != "none" && env.CURRENT_VERSION > params.TB_VERSION }
+            }
+            steps {
+                error "🚫 BLOCKED: You are attempting to downgrade from ${env.CURRENT_VERSION} to ${params.TB_VERSION}. Downgrades are not supported by this pipeline. Aborting build."
+            }
+        }
+
         stage('Skip Upgrade') {
             when {
                 expression { env.UPGRADE_REQUIRED == "false" }
