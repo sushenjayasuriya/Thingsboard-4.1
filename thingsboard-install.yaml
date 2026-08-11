@@ -1,0 +1,36 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: thingsboard-install
+  namespace: thingsboard
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: thingsboard-install
+        image: thingsboard-prod:${TB_VERSION} # Note: Jenkins will substitute this dynamically
+        imagePullPolicy: IfNotPresent
+        command: ["/bin/bash"]
+        args:
+        - -c
+        - /usr/share/thingsboard/bin/install/install.sh
+        env:
+        - name: LOAD_SYSTEM_DATA
+          value: "false"
+        - name: DATABASE_TS_TYPE
+          value: "cassandra"
+        - name: SPRING_DATASOURCE_URL
+          value: "jdbc:postgresql://postgres:5432/thingsboard"
+        - name: SPRING_DATASOURCE_USERNAME
+          value: "postgres"
+        - name: SPRING_DATASOURCE_PASSWORD
+          value: "postgres"
+        - name: CASSANDRA_CLUSTER_NAME
+          value: "ThingsBoard Cluster"
+        - name: CASSANDRA_KEYSPACE_NAME
+          value: "thingsboard"
+        - name: CASSANDRA_URL
+          value: "scylla-client:9042"
+        - name: CASSANDRA_USE_CREDENTIALS
+          value: "false"
