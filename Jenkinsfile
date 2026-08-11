@@ -7,8 +7,6 @@ pipeline {
 
     environment {
         PACKAGE_REPO = "https://github.com/thingsboard/thingsboard/releases/download"
-        // DOCKER_COMPOSE_KAFKA = "docker-compose.kafka.yml"
-        DOCKER_COMPOSE_TB = "docker-compose.prod.yml"
     }
 
     stages {
@@ -28,7 +26,7 @@ pipeline {
             }
         }
 
-                stage('Detect Current Installed Version') {
+        stage('Detect Current Installed Version') {
             steps {
                 script {
                     echo '🔍 Detecting current running ThingsBoard Production container in Kubernetes...'
@@ -136,8 +134,7 @@ pipeline {
             }
         }
 
-
-                stage('Deploy To Kubernetes') {
+        stage('Deploy To Kubernetes') {
             when {
                 expression { env.UPGRADE_REQUIRED == "true" }
             }
@@ -166,8 +163,8 @@ pipeline {
                 }
             }
         }
-        
-                stage('Verify Deployment') {
+
+        stage('Verify Deployment') {
             when {
                 expression { env.UPGRADE_REQUIRED == "true" }
             }
@@ -193,7 +190,7 @@ pipeline {
                 }
             }
         }
-    }
+    } // <-- This line CLOSES the 'stages' block!
 
     post {
         success {
@@ -218,7 +215,7 @@ pipeline {
             }
         }
         
-                failure {
+        failure {
             script {
                 echo "❌ ThingsBoard Production upgrade FAILED! Starting EMERGENCY rollback procedures..."
                 
@@ -245,4 +242,19 @@ pipeline {
                 error "❌ ThingsBoard Production upgrade failed. URGENT: Check logs and notify operations team!"
             }
         }
-}
+        
+        unstable {
+            echo "⚠️ ThingsBoard Production upgrade completed but may be unstable. Monitor very closely!"
+        }
+        
+        always {
+            echo "🧹 Cleaning up Production temporary files..."
+            sh """
+                # Clean up downloaded RPM files
+                #rm -f thingsboard-*.rpm || true
+                
+                echo "✅ Production Cleanup completed"
+            """
+        }
+    }
+} // <-- This line CLOSES the entire 'pipeline' block!
